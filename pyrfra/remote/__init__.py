@@ -5,6 +5,9 @@ import codecs
 import pickle
 import shlex
 
+# set up command methods
+methods = ['ls', 'rm', 'mv', 'curl', 'wget']
+
 
 class RemoteFile:
     def __init__(self, remote, fname):
@@ -23,11 +26,11 @@ class Remote:
 
         # TODO: set up remote
 
-    def sh(self, x):
+    def sh(self, x, quiet=False):
         if self.ip is None:
-            return sh(x)
+            return sh(x, quiet=quiet)
         else:
-            return rsh(self.ip, x)
+            return rsh(self.ip, x, quiet=quiet)
     
     def file(self, fname):
         return RemoteFile(self, fname)
@@ -40,12 +43,15 @@ class Remote:
             getattr(_utils, cmd)(*args, **kwargs)
         else:
             packed = codecs.encode(pickle.dumps((cmd, args, kwargs)), "base64").decode()
-            ret = self.sh(f"python3 -m pyrfra.remote.wrapper {shlex.quote(packed)} > /dev/null; cat .pyrfra.result; rm .pyrfra.result")
+            ret = self.sh(f"python3 -m pyrfra.remote.wrapper {shlex.quote(packed)} > /dev/null; cat .pyrfra.result; rm .pyrfra.result", quiet=True)
             return pickle.loads(codecs.decode(ret.encode(), "base64"))
 
-
-# set up command methods
-methods = ['ls', 'rm', 'mv', 'curl', 'wget']
+    # dummy methods
+    def ls(self, *a, **v): pass
+    def rm(self, *a, **v): pass
+    def mv(self, *a, **v): pass
+    def curl(self, *a, **v): pass
+    def wget(self, *a, **v): pass
 
 def command_method(cls, name):
     def _cmd(self, *args, **kwargs):

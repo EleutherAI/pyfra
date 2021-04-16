@@ -13,7 +13,7 @@ from best_download import download_file
 
 __all__ = ['sh', 'rsh', 'rsync', 'ls', 'rm', 'mv', 'curl', 'wget']
 
-def sh(x):
+def sh(x, quiet=False):
     p = subprocess.Popen(x, shell=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT)
@@ -23,16 +23,17 @@ def sh(x):
         byte = p.stdout.read(1)
         if byte == b'':
             break
-        sys.stdout.buffer.write(byte)
-        sys.stdout.flush()
+        if not quiet:
+            sys.stdout.buffer.write(byte)
+            sys.stdout.flush()
         ret.append(byte)
     
     return b"".join(ret).decode("utf-8").replace("\r\n", "\n").strip()
 
-def rsh(host, cmd):
-    print(f"Connecting to {host}.")
+def rsh(host, cmd, quiet=False):
+    if not quiet: print(f"Connecting to {host}.")
 
-    return sh(f"ssh -q -t {host} {shlex.quote(cmd)}")
+    return sh(f"ssh -q -t {host} {shlex.quote(cmd)}", quiet=quiet)
 
 def rsync(frm, to):
     frm = repr(frm)
