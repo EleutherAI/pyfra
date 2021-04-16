@@ -40,7 +40,7 @@ class Remote:
             getattr(_utils, cmd)(*args, **kwargs)
         else:
             packed = codecs.encode(pickle.dumps((cmd, args, kwargs)), "base64").decode()
-            ret = self.sh(f"python -m pyrfra.remote.wrapper {shlex.quote(packed)}")
+            ret = self.sh(f"python3 -m pyrfra.remote.wrapper {shlex.quote(packed)} > /dev/null; cat .pyrfra.result; rm .pyrfra.result")
             return pickle.loads(codecs.decode(ret.encode(), "base64"))
 
 
