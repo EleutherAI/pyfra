@@ -40,10 +40,11 @@ class Remote:
 
     def _run_utils_cmd(self, cmd, args, kwargs):
         if self.ip is None:
-            getattr(_utils, cmd)(*args, **kwargs)
+            return getattr(_utils, cmd)(*args, **kwargs)
         else:
             packed = codecs.encode(pickle.dumps((cmd, args, kwargs)), "base64").decode()
-            ret = self.sh(f"python3 -m pyrfra.remote.wrapper {shlex.quote(packed)} > /dev/null; cat .pyrfra.result; rm .pyrfra.result", quiet=True)
+            self.sh(f"python3 -m pyrfra.remote.wrapper {shlex.quote(packed)}")
+            ret = self.sh("cat .pyrfra.result; rm .pyrfra.result", quiet=True)
             return pickle.loads(codecs.decode(ret.encode(), "base64"))
 
     # dummy methods
@@ -55,7 +56,7 @@ class Remote:
 
 def command_method(cls, name):
     def _cmd(self, *args, **kwargs):
-        self._run_utils_cmd(name, args, kwargs)
+        return self._run_utils_cmd(name, args, kwargs)
 
     setattr(cls, name, _cmd)
 
