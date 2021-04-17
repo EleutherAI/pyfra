@@ -60,11 +60,11 @@ def add_user(name, email, password, roles=[]):
 def index():
     roles = current_user.get_roles()
     pages = registry.get_pages(roles)
-    return render_template(template_path / 'index.html', pages=pages)
+    return render_template('index.html', pages=pages)
 
 @app.errorhandler(404)
 def page_not_found(e):
-    return render_template(template_path / '404.html'), 404
+    return render_template('404.html'), 404
 
 # WTForms stuff
 # ===================================================================
@@ -135,7 +135,7 @@ def reset_password(token):
         db.session.commit()
         flash('Your password has been reset.')
         return redirect(url_for('login'))
-    return render_template(template_path / 'reset_password.html', form=form)
+    return render_template('reset_password.html', form=form)
 
 @app.route('/forgot-password', methods=['GET', 'POST'])
 def resetPassword():
@@ -150,7 +150,7 @@ def resetPassword():
             send_password_reset_email(app.config, user.email, user.name, token)
         flash('Check your email for the instructions to reset your password')
         return redirect(url_for('login'))
-    return render_template(template_path / 'forgot_password.html',
+    return render_template('forgot_password.html',
                            title='Reset Password', form=form)
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -173,7 +173,7 @@ def login():
             next_page = url_for('index')
         return redirect(next_page)
 
-    return render_template(template_path / 'login.html', title='Sign In', form=form)
+    return render_template('login.html', title='Sign In', form=form)
 
 @app.route('/logout')
 def logout():

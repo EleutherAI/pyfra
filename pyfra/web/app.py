@@ -7,8 +7,10 @@ from flask_admin import Admin
 from flask_bootstrap import Bootstrap
 
 from .config import Config
+import pathlib
 
-app = Flask(__name__)
+template_path = pathlib.Path(__file__).parent.absolute() / 'templates'
+app = Flask(__name__, template_folder=str(template_path))
 app.config.from_object(Config)
 
 db = SQLAlchemy(app)
