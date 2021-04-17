@@ -1,6 +1,3 @@
-best_download
-
-# web
 flask
 flask-login
 flask-wtf

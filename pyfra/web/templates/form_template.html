@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% import "bootstrap/wtf.html" as wtf %}
+{% block extra_libraries %}
+<script
+src="https://code.jquery.com/jquery-3.6.0.min.js"
+integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4="
+crossorigin="anonymous"></script>
+{% endblock %}
+
+
+{% block content %}
+
+    <div class="page1024">
+        <h1>{{title}}</h1>
+        <form method="post">
+            <fieldset>
+              {{ wtf.quick_form(form, button_map={'submit':'success'}) }}
+            </fieldset>
+          </form>
+    </div>
+
+
+{% endblock %}

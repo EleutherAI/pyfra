@@ -1,3 +1,6 @@
+from .iterators import *
+
+
 def id(x):
     return x
 
@@ -25,3 +28,11 @@ def mean(x):
 
 def fmap(f):
     return lambda xs: (f(x) for x in xs)
+
+def pipeline(fs):
+    def _fn(x):
+        for f in fs: x = f(x)
+
+        return x
+
+    return _fn

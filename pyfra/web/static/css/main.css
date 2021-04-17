@@ -1,0 +1,246 @@
+@media screen
+{        
+    html, body
+    {
+        font-family: 'Open Sans', sans-serif;
+        width: 100%;
+        height: 100%;
+    }
+
+    /* Main Panel - To Show Full Background*/
+    /* ============================================================= */    
+    #main {
+        height: 100%;
+        width: 100%;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+    }
+
+    #main:after
+    {
+        content : "";
+        display: block;
+        position: fixed;
+        top: 0;
+        left: 0;
+        background-image: url("/static/img/background.jpg");
+        background-size: 100% 100%;
+        width: 100%;
+        height: 100%;
+        opacity: 0.3;
+        z-index: -1;
+        background-repeat: no-repeat;
+        background-position: center;
+        background-attachment:fixed;
+    }
+
+
+    /* Header containing logo and buttons*/
+    /* ============================================================= */    
+    header
+    {
+        padding: 5px;
+        box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.6);
+        background: white;
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    header #buttons
+    {
+        display: flex;
+    }
+
+    header #logo 
+    {
+        height: 40px;
+        margin-left: 10px;        
+    }
+
+    #logoutButton
+    {
+        height: 30px;
+    }
+
+    .buttonBlock
+    {
+        display:flex;
+        flex-direction: column;
+        align-items: center;
+        margin-right: 20px;
+    }
+
+    .buttonBlock:last-child
+    {
+        margin-left: 20px;
+    }
+
+
+    /* Area to flash messages to user*/
+    /* ============================================================= */    
+    .flashes 
+    {
+        border-top: 1px solid silver;
+        padding: 10px;
+        box-shadow: 0px 2px 5px -2px rgba(0, 0, 0, 0.6);
+        background: white;
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 1;
+    }
+
+    /* Full Page With Panel with 20px margin to show pretty background
+    /* ============================================================= */
+    .fullPage
+    {
+        flex-grow: 1;
+        flex-shrink: 1;
+        margin: 20px;
+
+        border: 1px solid silver;
+        padding: 20px;
+        box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.3);
+        background: white;
+        display:flex;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    /* Full Page With Panel with 20px margin to show pretty background
+    /* ============================================================= */
+    .page1024
+    {
+        width: 1024px;
+        margin: 0 auto;        
+        margin-top: 20px;      
+
+/*        flex-grow: 1;
+        flex-shrink: 1;*/
+
+        border: 1px solid silver;
+        padding: 20px;
+        box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.3);
+        background: white;
+
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+
+    /* Global styles*/
+    /* ============================================================= */
+    h1 {
+        font-family: 'Alegreya', serif;
+        font-weight: 700;
+        font-size: 28px;    
+        margin-bottom: 20px;
+        text-align: center;
+        border-bottom: 1px solid silver;
+        padding-bottom: 10px;
+    }
+
+    /* Login Form */
+    /* ============================================================= */
+
+    #loginFormPanel
+    {
+        width: 350px; 
+        margin: 0 auto;
+        margin-top: 50px;
+
+        border: 1px solid silver;
+        padding:30px;
+        padding-top: 25px;
+        padding-bottom: 10px;
+        box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.3);
+        background-color: white;
+    }
+
+    #loginFormPanel h1 {
+        font-family: 'Alegreya', serif;
+        font-weight: 700;
+        font-size: 28px;    
+        margin-bottom: 20px;
+        text-align: center;
+        border-bottom: 1px solid silver;
+        padding-bottom: 10px;
+    }
+
+    #loginFormPanel label {
+
+      display: inline-block;
+      margin-bottom: 5px;
+      font-weight: 600;
+    }
+
+    #loginFormPanel .inputBlock {
+        margin-bottom: 15px;
+    }
+
+    #loginFormPanel .labelLine 
+    {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+    }
+
+    #loginFormPanel input[type=text], input[type=password]
+    {
+        width: 100%;
+        font-size: 16px;
+        padding: 5px;
+        font-weight: 400;
+    }
+
+    #loginFormPanel input[type=submit]
+    {
+        width: 100%;
+        font-size: 16px;
+        padding:5px;
+        margin:0px;
+        margin-left: -1px;
+        margin-bottom: 10px;
+    }
+
+    #loginFormPanel input[type=checkbox]
+    {
+        padding:0px;
+        margin: 0px;
+    }
+
+    #rememberMe
+    {
+        display: flex;
+        flex-direction:row;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+
+    #loginForm label[for=remember_me]
+    {
+        font-size: 14px;
+        margin: 0px;
+        margin-left: 5px;
+        font-weight: 400;
+    }
+
+
+    #loginFormPanel a {
+        display:block;
+        margin-bottom: 10px;
+        font-size: 14px;
+        margin-top: 2px;
+    }
+
+    form .error
+    {
+        color: red;
+        font-size: 14px;
+    }
+}

@@ -1,4 +1,4 @@
-import pyfra.utils as _utils
+from pyfra import utils as _utils
 from collections import namedtuple
 import codecs
 import pickle
