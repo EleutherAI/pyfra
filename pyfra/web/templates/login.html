@@ -12,8 +12,8 @@
             <h1>Eleuther Internal</h1>
             {{ form.hidden_tag() }}
             <div class="inputBlock">
-                <label for="email">Email Address</label>    
-                <input id="email" name="email" required="" size="32" type="text" value="">
+                <label for="name">Username</label>    
+                <input id="name" name="name" required="" size="32" type="text" value="">
             </div>
             <div class="inputBlock">
                 <label for="password">Password</label> 
@@ -31,9 +31,8 @@
     <script>
         $("#loginForm").validate({
             rules: {
-                email: {
+                name: {
                   required: true,
-                  email: true
                 },
                 password: {
                     required: true

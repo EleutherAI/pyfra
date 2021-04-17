@@ -6,7 +6,7 @@ from flask_login import LoginManager
 from flask_admin import Admin
 from flask_bootstrap import Bootstrap
 
-from config import Config
+from .config import Config
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -21,5 +21,5 @@ login.login_view = 'login'
 app.config['FLASK_ADMIN_SWATCH'] = 'cerulean'
 admin = Admin(app, name='Admin Dashboard', template_mode='bootstrap3')
 
-import models
+import pyfra.web.models
 

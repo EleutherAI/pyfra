@@ -1,5 +1,5 @@
-from app import db
-from app import login
+from .app import db
+from .app import login
 
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -8,13 +8,13 @@ from sqlalchemy.ext.hybrid import hybrid_property
 
 from time import time
 import jwt
-from app import app
+from .app import app
 
 class User(db.Model, UserMixin):
     __tablename__ = 'user'
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(64), index=True)
-    email = db.Column(db.String(120), index=True, unique=True)
+    name = db.Column(db.String(64), index=True, unique=True)
+    email = db.Column(db.String(120), index=True)
     password_hash = db.Column(db.String(128))
     roles = db.Column(db.String(512))
 
@@ -49,11 +49,6 @@ class User(db.Model, UserMixin):
     def get_roles(self):
         return list(set(["everyone"] + self.roles.lower().split(',')))
 
-
-class Bmk(db.Model):
-    __tablename__ = 'bmk'
-    id = db.Column(db.Integer, primary_key=True)
-    text = db.Column(db.String(128))
 
 @login.user_loader
 def load_user(id):

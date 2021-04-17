@@ -6,6 +6,8 @@ from app import db
 import random
 import string
 
+db.create_all()
+
 def randomStringwithDigitsAndSymbols(stringLength=10):
     """Generate a random string of letters, digits and special characters """
     password_characters = string.ascii_letters + string.digits + string.punctuation

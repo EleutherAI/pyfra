@@ -4,22 +4,23 @@ from werkzeug.urls import url_parse
 
 from flask_login import current_user, login_user, login_required, logout_user
 
-from forms import LoginForm
-from forms import ResetPasswordRequestForm
-from forms import ResetPasswordForm
+from .forms import LoginForm
+from .forms import ResetPasswordRequestForm
+from .forms import ResetPasswordForm
 
-from emailer import send_password_reset_email
+from .emailer import send_password_reset_email
 
-from app import app
-from app import db
-from app import admin
+from .app import app
+from .app import db
+from .app import admin
 
-from models import User, Bmk
+from .models import User
 
 from flask_admin.contrib.sqla import ModelView
 
-from pyfra import *
+from pyfra.utils import *
 import collections
+import pathlib
 
 class PageRegistry:
     def __init__(self):
@@ -40,6 +41,16 @@ class PageRegistry:
 registry = PageRegistry()
 
 
+def add_user(name, email, password, roles=[]):
+    newUser = User(email=email, name=name, roles=roles)
+
+    # automatically hashes
+    newUser.password = password
+
+    db.session.add(newUser)        
+    db.session.commit()
+
+
 # Index and 404
 # ===================================================================
 @app.route('/')
@@ -54,7 +65,7 @@ def index():
 def page_not_found(e):
     return render_template('404.html'), 404
 
-# Example for bmk
+# WTForms stuff
 # ===================================================================
 
 
@@ -90,7 +101,7 @@ def register_wtf_form(name, pretty_name, form_class, callback, allowed_roles):
             callback(data)
             return redirect(url_for('index'))
 
-        return render_template_string(fread('templates/form_template.html'), form=form, title=pretty_name)
+        return render_template_string(fread(pathlib.Path(__file__).parent.absolute() / 'templates' / 'form_template.html'), form=form, title=pretty_name)
     
     app.add_url_rule(f"/{name}", name, _fn, methods=['GET', 'POST'])
 
@@ -136,7 +147,7 @@ def login():
 
     form = LoginForm()
     if form.validate_on_submit():
-        user = User.query.filter_by(email=form.email.data).first()
+        user = User.query.filter_by(name=form.name.data).first()
         if (user):
             print("User Found: ", user.name)
         if user is None or not user.check_password(form.password.data):
@@ -181,5 +192,5 @@ admin.add_view(UserAdminView(User, db.session))
 
 # Run Development Server
 # ===================================================================
-def run_server():
-    app.run(host='0.0.0.0', debug = True)
+def run_server(debug=False):
+    app.run(host='0.0.0.0', debug=debug)

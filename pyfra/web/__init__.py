@@ -1,4 +1,4 @@
-from server import *
+from .server import *
 from functools import wraps
 import inspect
 
@@ -43,11 +43,3 @@ def stateless_form(pretty_name=None, field_names={}, roles=['everyone']):
         register_wtf_form(callback.__name__, pretty_name, CustomForm, _callback_wrapper, roles)
     
     return _fn
-
-@stateless_form("Example Form", {
-    'text1': "Text 1"
-})
-def example_form(text1: str, text2: int=123, check: bool=True):
-    print("form submitted", text1, text2, check)
-
-run_server()
