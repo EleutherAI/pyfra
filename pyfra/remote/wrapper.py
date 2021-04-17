@@ -1,4 +1,4 @@
-import pyrfra.utils as _utils
+import pyfra.utils as _utils
 import pickle
 import codecs
 import sys
@@ -14,4 +14,4 @@ def execute_utils(packed):
 
 
 if __name__ == '__main__':
-    _utils.fwrite(".pyrfra.result", execute_utils(sys.argv[1]))
+    _utils.fwrite(".pyfra.result", execute_utils(sys.argv[1]))

@@ -1,12 +1,12 @@
-from ..utils import *
-import pyrfra.utils as _utils
+import pyfra.utils as _utils
 from collections import namedtuple
 import codecs
 import pickle
 import shlex
 
 # set up command methods
-methods = ['ls', 'rm', 'mv', 'curl', 'wget']
+methods = ['ls', 'rm', 'mv', 'curl', 'wget',
+           'fwrite', 'fread', 'jread', 'jwrite', 'csvread', 'csvwrite']
 
 
 class RemoteFile:
@@ -28,9 +28,9 @@ class Remote:
 
     def sh(self, x, quiet=False):
         if self.ip is None:
-            return sh(x, quiet=quiet)
+            return _utils.sh(x, quiet=quiet)
         else:
-            return rsh(self.ip, x, quiet=quiet)
+            return _utils.rsh(self.ip, x, quiet=quiet)
     
     def file(self, fname):
         return RemoteFile(self, fname)
@@ -44,7 +44,7 @@ class Remote:
         else:
             packed = codecs.encode(pickle.dumps((cmd, args, kwargs)), "base64").decode()
             self.sh(f"python3 -m pyrfra.remote.wrapper {shlex.quote(packed)}")
-            ret = self.sh("cat .pyrfra.result; rm .pyrfra.result", quiet=True)
+            ret = self.sh("cat .pyrfra.result; rm .pyfra.result", quiet=True)
             return pickle.loads(codecs.decode(ret.encode(), "base64"))
 
     # dummy methods
@@ -53,6 +53,13 @@ class Remote:
     def mv(self, *a, **v): pass
     def curl(self, *a, **v): pass
     def wget(self, *a, **v): pass
+
+    def fwrite(self, *a, **v): pass
+    def fread(self, *a, **v): pass
+    def jread(self, *a, **v): pass
+    def jwrite(self, *a, **v): pass
+    def csvread(self, *a, **v): pass
+    def csvwrite(self, *a, **v): pass
 
 def command_method(cls, name):
     def _cmd(self, *args, **kwargs):

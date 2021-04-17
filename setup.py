@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="pyrfra",
+    name="pyfra",
     version="0.0.1",
     author="Leo Gao",
     author_email="lg@eleuther.ai",
