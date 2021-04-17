@@ -25,18 +25,20 @@ import pathlib
 class PageRegistry:
     def __init__(self):
         self.registry = collections.defaultdict(list)
+        self.i = 0
 
     def add_page(self, name, pretty_name, allowed_roles):
         for role in allowed_roles:
-            self.registry[role].append((name, pretty_name))
+            self.registry[role].append((self.i, name, pretty_name))
+        self.i += 1
     
     def get_pages(self, roles):
-        ret = set()
+        ret = []
         for role in roles:
             for page in self.registry[role]:
-                ret.add(page)
+                if page not in ret: ret.append(page)
         
-        return list(sorted(ret))
+        return [(n,p) for _,n,p in sorted(ret)]
 
 registry = PageRegistry()
 
@@ -58,7 +60,6 @@ def add_user(name, email, password, roles=[]):
 def index():
     roles = current_user.get_roles()
     pages = registry.get_pages(roles)
-    print(roles, pages, registry.registry)
     return render_template('index.html', pages=pages)
 
 @app.errorhandler(404)
@@ -70,6 +71,7 @@ def page_not_found(e):
 
 
 registry.add_page("admin", "Admin Dashboard", ["admin"])
+registry.add_page("change_password", "Change Password", ["everyone"])
 
 def register_wtf_form(name, pretty_name, form_class, callback, allowed_roles):
     if pretty_name is None: pretty_name = name
@@ -78,7 +80,6 @@ def register_wtf_form(name, pretty_name, form_class, callback, allowed_roles):
 
     @login_required
     def _fn():
-        print(current_user)
 
         is_authorized = any([
             role in current_user.get_roles()
@@ -98,7 +99,11 @@ def register_wtf_form(name, pretty_name, form_class, callback, allowed_roles):
                 if field.name not in ["submit", "csrf_token"]
             }
 
-            callback(data)
+            ret = callback(data)
+            if ret is None:
+                flash("Form successfully submitted")
+            else:
+                flash(ret)
             return redirect(url_for('index'))
 
         return render_template_string(fread(pathlib.Path(__file__).parent.absolute() / 'templates' / 'form_template.html'), form=form, title=pretty_name)
@@ -108,11 +113,14 @@ def register_wtf_form(name, pretty_name, form_class, callback, allowed_roles):
 
 # Authentication Stuff
 # ===================================================================
+@app.route('/change_password/')
+@login_required
+def change_password():
+    token = current_user.get_reset_password_token()
+    return redirect(f'/reset_password/{token}')
+
 @app.route('/reset_password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
-    if current_user.is_authenticated:
-        return redirect(url_for('index'))
-
     user = User.verify_reset_password_token(token)
     if not user:
         return redirect(url_for('index'))
