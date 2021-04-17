@@ -4,43 +4,44 @@ from pyfra.remote import RemoteFile
 
 __all__ = ['fwrite', 'fread', 'jread', 'jwrite', 'csvread', 'csvwrite']
 
-def fwrite(fname, content):
-    if isinstance(fname, RemoteFile):
-        remfile = fname
-        return remfile.remote.fwrite(remfile.fname, content)
+def fname_fn(fn):
+    def _fn(fname, *a, **k):
+        if isinstance(fname, RemoteFile):
+            remfile = fname
+            return getattr(remfile.remote, fn.__name__)(remfile.fname, *a, **k)
+        
+        if isinstance(fname, list):
+            fnames = fname
+            return [
+                fn(fname, *a, **k)
+                for fname in fnames
+            ]
 
+    return _fn
+
+
+@fname_fn
+def fwrite(fname, content):
     with open(fname, 'w') as fh:
         fh.write(content)
 
+@fname_fn
 def fread(fname):
-    if isinstance(fname, RemoteFile):
-        remfile = fname
-        return remfile.remote.fread(remfile.fname)
-
     with open(fname) as fh:
         return fh.read()
 
+@fname_fn
 def jread(fname):
-    if isinstance(fname, RemoteFile):
-        remfile = fname
-        return remfile.remote.jread(remfile.fname)
-
     with open(fname) as fh:
         return json.load(fh)
 
+@fname_fn
 def jwrite(fname, content):
-    if isinstance(fname, RemoteFile):
-        remfile = fname
-        return remfile.remote.jwrite(remfile.fname, content)
-
     with open(fname, 'w') as fh:
         json.dump(content, fh)
 
+@fname_fn
 def csvread(fname, colnames=None):
-    if isinstance(fname, RemoteFile):
-        remfile = fname
-        return remfile.remote.csvread(remfile.fname, colnames)
-
     fh = open(fname)
     if fname[-4:] == ".tsv":
         rdr = csv.reader(fh, delimiter="\t")
@@ -57,11 +58,8 @@ def csvread(fname, colnames=None):
             k: v for k, v in zip(cols, [*ob, *[None for _ in range(len(cols) - len(ob))]])
         }
 
+@fname_fn
 def csvwrite(fname, data, colnames=None):
-    if isinstance(fname, RemoteFile):
-        remfile = fname
-        return remfile.remote.csvwrite(remfile.fname, data, colnames)
-
     fh = open(fname, 'w')
     if colnames is None:
         colnames = data[0].keys()
