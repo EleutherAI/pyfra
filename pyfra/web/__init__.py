@@ -36,7 +36,8 @@ def page(pretty_name=None, display: Literal["raw", "text", "monospace"]="monospa
             else:
                 if name in dropdowns:
                     field = partial(SelectField, choices=dropdowns[name])
-                field = StringField
+                else:
+                    field = StringField
 
             setattr(CustomForm, name, field(
                 field_names.get(name, name), 
