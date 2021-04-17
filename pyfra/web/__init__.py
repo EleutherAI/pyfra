@@ -11,11 +11,11 @@ from wtforms import StringField, BooleanField, SubmitField, IntegerField
 from wtforms.validators import DataRequired, Email, EqualTo
 
 
-__all__ = ['form', 'view', 'webserver']
+__all__ = ['page', 'webserver']
 
 
-def form(pretty_name=None, field_names={}, roles=['everyone']):
-    def _fn(callback, pretty_name, field_names, roles):
+def page(pretty_name=None, display: Literal["raw", "text", "monospace"]="monospace", field_names={}, roles=['everyone']):
+    def _fn(callback, pretty_name, field_names, roles, display):
 
         sig = inspect.signature(callback)
 
@@ -39,39 +39,32 @@ def form(pretty_name=None, field_names={}, roles=['everyone']):
                 default = sig.parameters[name].default if not is_required else None
                 ))
 
-        CustomForm.submit = SubmitField('Submit')
+        if len(sig.parameters) > 0:
+            CustomForm.submit = SubmitField('Submit')
+            form = True
+        else:
+            form = False
 
         def _callback_wrapper(k):
-            return callback(**k)
+            html = callback(**k)
+            if display == "raw":
+                pass
+            elif display == "text":
+                html = escape(html)
+            elif display == "monospace":
+                html = f"<pre>{html}</pre>"
+            else:
+                raise NotImplementedError
+            
+            return html
 
-        register_wtf_form(callback.__name__, pretty_name, CustomForm, _callback_wrapper, roles)
+        register_page(callback.__name__, pretty_name, CustomForm, _callback_wrapper, roles, redirect_index=False, has_form=form)
     
     # used @form and not @form()
     if callable(pretty_name):
-        return _fn(pretty_name, pretty_name=None, field_names=field_names, roles=roles)
+        return _fn(pretty_name, pretty_name=None, field_names=field_names, roles=roles, display=display)
 
-    return partial(_fn, pretty_name=pretty_name, field_names=field_names, roles=roles)
-
-
-def view(pretty_name=None, display: Literal["raw", "text", "monospace"]="monospace", roles=['everyone']):
-    def _fn(callback, pretty_name, roles):
-        html = callback()
-        if display == "raw":
-            pass
-        elif display == "text":
-            html = escape(html)
-        elif display == "monospace":
-            html = f"<pre>{html}</pre>"
-        else:
-            raise NotImplementedError
-
-        register_view(callback.__name__, pretty_name, html, roles)
-    
-    # used @view and not @view()
-    if callable(pretty_name):
-        return _fn(pretty_name, pretty_name=None, roles=roles)
-
-    return partial(_fn, pretty_name=pretty_name, roles=roles)
+    return partial(_fn, pretty_name=pretty_name, field_names=field_names, roles=roles, display=display)
 
 
 def gen_pass(stringLength=16):
@@ -80,7 +73,7 @@ def gen_pass(stringLength=16):
     return ''.join(random.choice(password_characters) for i in range(stringLength))   
 
 
-@form("Add User", roles=["admin"])
+@page("Add User", roles=["admin"])
 def adduser(username: str, email: str="example@example.com", roles: str=""):
     password = gen_pass()
 

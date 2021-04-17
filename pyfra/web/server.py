@@ -73,7 +73,7 @@ def page_not_found(e):
 registry.add_page("admin/user", "Admin Dashboard", ["admin"])
 registry.add_page("change_password", "Change Password", ["everyone"])
 
-def register_wtf_form(name, pretty_name, form_class, callback, allowed_roles):
+def register_page(name, pretty_name, form_class, callback, allowed_roles, redirect_index, has_form):
     if pretty_name is None: pretty_name = name
 
     registry.add_page(name, pretty_name, allowed_roles)
@@ -90,45 +90,30 @@ def register_wtf_form(name, pretty_name, form_class, callback, allowed_roles):
             flash("You are not authorized to view this page.")
             return redirect(url_for('index'))
 
-        form = form_class()
+        if has_form:
+            form = form_class()
 
-        if form.validate_on_submit():
-            data = {
-                field.name: field.data
-                for field in form
-                if field.name not in ["submit", "csrf_token"]
-            }
+            html = ""
+            if form.validate_on_submit():
+                data = {
+                    field.name: field.data
+                    for field in form
+                    if field.name not in ["submit", "csrf_token"]
+                }
 
-            ret = callback(data)
-            if ret is None:
-                flash("Form successfully submitted")
-            else:
-                flash(ret)
-            return redirect(url_for('index'))
+                ret = callback(data)
+                html = ret if ret is not None else ""
+                
+                if redirect_index:
+                    flash("Form successfully submitted")
+                    return redirect(url_for('index'))
+        else:
+            html = callback({})
+            form = None
 
-        return render_template_string(fread(pathlib.Path(__file__).parent.absolute() / 'templates' / 'form_template.html'), form=form, title=pretty_name)
+        return render_template_string(fread(pathlib.Path(__file__).parent.absolute() / 'templates' / 'form_template.html'), body=html, form=form, title=pretty_name, has_form=has_form)
     
     app.add_url_rule(f"/{name}", name, _fn, methods=['GET', 'POST'])
-
-def register_view(name, pretty_name, html, allowed_roles):
-    if pretty_name is None: pretty_name = name
-
-    registry.add_page(name, pretty_name, allowed_roles)
-
-    @login_required
-    def _fn():
-        is_authorized = any([
-            role in current_user.get_roles()
-            for role in allowed_roles
-        ])
-
-        if not is_authorized:
-            flash("You are not authorized to view this page.")
-            return redirect(url_for('index'))
-
-        return render_template_string(fread(pathlib.Path(__file__).parent.absolute() / 'templates' / 'view_template.html'), body=html, title=pretty_name)
-    
-    app.add_url_rule(f"/{name}", name, _fn)
 
 
 # Authentication Stuff

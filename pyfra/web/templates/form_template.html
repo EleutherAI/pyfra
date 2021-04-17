@@ -13,11 +13,19 @@ crossorigin="anonymous"></script>
 
     <div class="page1024">
         <h1>{{title}}</h1>
+        <a href="/"><< Return to Dashboard</a><br>
+        {% if (has_form) %}
         <form method="post">
             <fieldset>
-              {{ wtf.quick_form(form, button_map={'submit':'success'}) }}
+                {{ wtf.quick_form(form, button_map={'submit':'success'}) }}
             </fieldset>
-          </form>
+        </form>
+        {% endif %}
+        <hr>
+
+        <p>
+            {{ body|safe }}
+        </p>
     </div>
 
 
