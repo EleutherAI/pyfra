@@ -35,10 +35,15 @@ def rsh(host, cmd, quiet=False):
 
     return sh(f"ssh -q -t {host} {shlex.quote(cmd)}", quiet=quiet)
 
-def rsync(frm, to):
+def rsync(frm, to, quiet=False):
     frm = repr(frm)
     to = repr(to)
-    opts = "-ar --info=progress2"
+
+    if quiet:
+        opts = "-arq"
+    else:
+        opts = "-ar --info=progress2"
+
     if ":" in frm and ":" in to:
         frm_host, frm_path = frm.split(":")
         to_host, to_path = to.split(":")
@@ -46,7 +51,7 @@ def rsync(frm, to):
         if to_host == frm_host:
             rsh(frm_host, f"rsync {opts} {frm_path} {to_path}")
         else:
-            sh(f"ssh -A {frm_host} rsync {opts} {frm_path} {to}")
+            sh(f"ssh -q -A {frm_host} rsync {opts} {frm_path} {to}")
     else:
         sh(f"rsync {opts} {frm} {to}")
 
