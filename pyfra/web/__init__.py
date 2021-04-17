@@ -7,14 +7,14 @@ from html import escape
 from typing_extensions import Literal
 
 from flask_wtf import FlaskForm
-from wtforms import StringField, BooleanField, SubmitField, IntegerField
+from wtforms import StringField, BooleanField, SubmitField, IntegerField, SelectField
 from wtforms.validators import DataRequired, Email, EqualTo
 
 
 __all__ = ['page', 'webserver']
 
 
-def page(pretty_name=None, display: Literal["raw", "text", "monospace"]="monospace", field_names={}, roles=['everyone']):
+def page(pretty_name=None, display: Literal["raw", "text", "monospace"]="monospace", field_names={}, dropdowns={}, roles=['everyone']):
     def _fn(callback, pretty_name, field_names, roles, display):
 
         sig = inspect.signature(callback)
@@ -31,6 +31,8 @@ def page(pretty_name=None, display: Literal["raw", "text", "monospace"]="monospa
             elif type == bool:
                 field = BooleanField
             else:
+                if name in dropdowns:
+                    field = partial(SelectField, choices=dropdowns[name])
                 field = StringField
 
             setattr(CustomForm, name, field(
