@@ -4,7 +4,10 @@ import inspect
 import string
 import random
 from html import escape
-from typing_extensions import Literal
+try:
+    from typing_extensions import Literal
+except ModuleNotFoundError:
+    from typing import Literal
 
 from flask_wtf import FlaskForm
 from wtforms import StringField, BooleanField, SubmitField, IntegerField, SelectField
