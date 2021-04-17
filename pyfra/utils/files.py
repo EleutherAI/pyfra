@@ -6,16 +6,20 @@ __all__ = ['fwrite', 'fread', 'jread', 'jwrite', 'csvread', 'csvwrite']
 
 def fname_fn(fn):
     def _fn(fname, *a, **k):
+        # use Remote impl if argument is RemoteFile
         if isinstance(fname, RemoteFile):
             remfile = fname
             return getattr(remfile.remote, fn.__name__)(remfile.fname, *a, **k)
         
+        # map over list if fname is list
         if isinstance(fname, list):
             fnames = fname
             return [
                 fn(fname, *a, **k)
                 for fname in fnames
             ]
+
+        return fn(fname, *a, **k)
 
     return _fn
 

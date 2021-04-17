@@ -43,8 +43,8 @@ class Remote:
             return getattr(_utils, cmd)(*args, **kwargs)
         else:
             packed = codecs.encode(pickle.dumps((cmd, args, kwargs)), "base64").decode()
-            self.sh(f"python3 -m pyrfra.remote.wrapper {shlex.quote(packed)}")
-            ret = self.sh("cat .pyfra.result; rm .pyfra.result", quiet=False)
+            self.sh(f"python3 -m pyfra.remote.wrapper {shlex.quote(packed)}")
+            ret = self.sh("cat .pyfra.result; rm .pyfra.result", quiet=True)
             return pickle.loads(codecs.decode(ret.encode(), "base64"))
 
     # dummy methods
@@ -103,6 +103,7 @@ def command_method(cls, name):
         return self._run_utils_cmd(name, args, kwargs)
 
     setattr(cls, name, _cmd)
+
 
 for method in methods:
     command_method(Remote, method)

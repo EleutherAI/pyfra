@@ -11,7 +11,7 @@ setuptools.setup(
     description="A framework for research code",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/EleutherAI/pyrfra",
+    url="https://github.com/EleutherAI/pyfra",
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
