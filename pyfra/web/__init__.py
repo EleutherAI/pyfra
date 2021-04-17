@@ -3,13 +3,15 @@ from functools import wraps, partial
 import inspect
 import string
 import random
+from html import escape
+from typing_extensions import Literal
 
 from flask_wtf import FlaskForm
 from wtforms import StringField, BooleanField, SubmitField, IntegerField
 from wtforms.validators import DataRequired, Email, EqualTo
 
 
-__all__ = ['form', 'run_server']
+__all__ = ['form', 'view', 'webserver']
 
 
 def form(pretty_name=None, field_names={}, roles=['everyone']):
@@ -51,6 +53,27 @@ def form(pretty_name=None, field_names={}, roles=['everyone']):
     return partial(_fn, pretty_name=pretty_name, field_names=field_names, roles=roles)
 
 
+def view(pretty_name=None, display: Literal["raw", "text", "monospace"]="monospace", roles=['everyone']):
+    def _fn(callback, pretty_name, roles):
+        html = callback()
+        if display == "raw":
+            pass
+        elif display == "text":
+            html = escape(html)
+        elif display == "monospace":
+            html = f"<pre>{html}</pre>"
+        else:
+            raise NotImplementedError
+
+        register_view(callback.__name__, pretty_name, html, roles)
+    
+    # used @view and not @view()
+    if callable(pretty_name):
+        return _fn(pretty_name, pretty_name=None, roles=roles)
+
+    return partial(_fn, pretty_name=pretty_name, roles=roles)
+
+
 def gen_pass(stringLength=16):
     """Generate a random string of letters, digits """
     password_characters = string.ascii_letters + string.digits
@@ -66,7 +89,7 @@ def adduser(username: str, email: str="example@example.com", roles: str=""):
     return f"Added user {username} with randomly generated password {password}."
 
 
-def run_server(debug=False):
+def webserver(debug=False):
     if User.query.count() == 0:
         # Add temporary admin user
         password = gen_pass()

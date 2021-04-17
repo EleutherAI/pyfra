@@ -110,6 +110,26 @@ def register_wtf_form(name, pretty_name, form_class, callback, allowed_roles):
     
     app.add_url_rule(f"/{name}", name, _fn, methods=['GET', 'POST'])
 
+def register_view(name, pretty_name, html, allowed_roles):
+    if pretty_name is None: pretty_name = name
+
+    registry.add_page(name, pretty_name, allowed_roles)
+
+    @login_required
+    def _fn():
+        is_authorized = any([
+            role in current_user.get_roles()
+            for role in allowed_roles
+        ])
+
+        if not is_authorized:
+            flash("You are not authorized to view this page.")
+            return redirect(url_for('index'))
+
+        return render_template_string(fread(pathlib.Path(__file__).parent.absolute() / 'templates' / 'view_template.html'), body=html, title=pretty_name)
+    
+    app.add_url_rule(f"/{name}", name, _fn)
+
 
 # Authentication Stuff
 # ===================================================================
