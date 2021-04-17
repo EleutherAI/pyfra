@@ -20,6 +20,17 @@ setuptools.setup(
     ],
     python_requires='>=3.6',
     install_requires=[
-        'best_download'
+        'best_download',
+        'flask',
+        'flask-login',
+        'flask-wtf',
+        'flask-sqlalchemy',
+        'flask-migrate',
+        'flask-admin',
+        'flask-bootstrap',
+        'pyjwt',
+        'sqlalchemy',
+        'wtforms[email]',
+
     ]
 )
