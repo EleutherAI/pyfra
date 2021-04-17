@@ -11,7 +11,7 @@ import errno
 from best_download import download_file
 
 
-__all__ = ['sh', 'rsh', 'rsync', 'ls', 'rm', 'mv', 'curl', 'wget']
+__all__ = ['sh', 'rsh', 'rsync', 'ls', 'rm', 'mv', 'curl', 'wget', 'quote']
 
 def sh(x, quiet=False):
     p = subprocess.Popen(x, shell=True,
@@ -96,3 +96,14 @@ def wget(url, to=None, checksum=None):
         if not to: to = 'index'
 
     download_file(url, to, checksum)
+
+
+# convenience function for shlex.quote
+class _quote:
+    def __ror__(self, other):
+        return shlex.quote(other)
+    
+    def __call__(self, other):
+        return shlex.quote(other)
+
+quote = _quote()
