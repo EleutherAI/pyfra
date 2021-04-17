@@ -70,7 +70,7 @@ def page_not_found(e):
 # ===================================================================
 
 
-registry.add_page("admin", "Admin Dashboard", ["admin"])
+registry.add_page("admin/user", "Admin Dashboard", ["admin"])
 registry.add_page("change_password", "Change Password", ["everyone"])
 
 def register_wtf_form(name, pretty_name, form_class, callback, allowed_roles):
@@ -196,9 +196,3 @@ class UserAdminView(ModelView):
         return redirect(url_for('index'))
 
 admin.add_view(UserAdminView(User, db.session))
-
-
-# Run Development Server
-# ===================================================================
-def run_server(debug=False):
-    app.run(host='0.0.0.0', debug=debug)

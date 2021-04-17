@@ -1,5 +1,5 @@
 from .server import *
-from functools import wraps
+from functools import wraps, partial
 import inspect
 import string
 import random
@@ -9,11 +9,12 @@ from wtforms import StringField, BooleanField, SubmitField, IntegerField
 from wtforms.validators import DataRequired, Email, EqualTo
 
 
-__all__ = ['stateless_form', 'run_server']
+__all__ = ['form', 'run_server']
 
 
-def stateless_form(pretty_name=None, field_names={}, roles=['everyone']):
-    def _fn(callback):
+def form(pretty_name=None, field_names={}, roles=['everyone']):
+    def _fn(callback, pretty_name, field_names, roles):
+
         sig = inspect.signature(callback)
 
         class CustomForm(FlaskForm):
@@ -43,7 +44,11 @@ def stateless_form(pretty_name=None, field_names={}, roles=['everyone']):
 
         register_wtf_form(callback.__name__, pretty_name, CustomForm, _callback_wrapper, roles)
     
-    return _fn
+    # used @form and not @form()
+    if callable(pretty_name):
+        return _fn(pretty_name, pretty_name=None, field_names=field_names, roles=roles)
+
+    return partial(_fn, pretty_name=pretty_name, field_names=field_names, roles=roles)
 
 
 def gen_pass(stringLength=16):
@@ -52,10 +57,23 @@ def gen_pass(stringLength=16):
     return ''.join(random.choice(password_characters) for i in range(stringLength))   
 
 
-@stateless_form("Add User", roles=["admin"])
+@form("Add User", roles=["admin"])
 def adduser(username: str, email: str="example@example.com", roles: str=""):
     password = gen_pass()
 
     add_user(username, email, password, roles)
 
     return f"Added user {username} with randomly generated password {password}."
+
+
+def run_server(debug=False):
+    if User.query.count() == 0:
+        # Add temporary admin user
+        password = gen_pass()
+        add_user("root", "example@example.com", password, "admin")
+        print("=================================================")
+        print("ADMIN LOGIN CREDENTIALS (WILL ONLY BE SHOWN ONCE)")
+        print("Username: root")
+        print("Password:", password)
+        print("=================================================")
+    app.run(host='0.0.0.0', debug=debug)
