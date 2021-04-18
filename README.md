@@ -28,7 +28,7 @@ rem = Remote("user@example.com")
 nas = Remote("user@example2.com")
 
 @page("Run experiment", dropdowns={'server': ['local', 'remote']})
-def run_experiment(server: str, config_file: str):
+def run_experiment(server: str, config_file: str, some_numerical_value: int, some_checkbox: bool):
     r = loc if server == 'local' else rem
 
     r.sh("git clone https://github.com/EleutherAI/gpt-neox")
@@ -59,6 +59,11 @@ def example():
     # ls as a function returns a list of files (with absolute paths) on the selected remote.
     # the returned value is displayed on the webpage.
     return '\n'.join(rem.ls('/'))
+
+@page("List files in some directory")
+def list_files(directory):
+    return sh(f"ls -la {directory | quote}")
+
 
 # start internal webserver
 webserver()
