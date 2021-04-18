@@ -91,7 +91,7 @@ def register_page(name, pretty_name, form_class, callback, allowed_roles, redire
             return redirect(url_for('index'))
 
         if has_form:
-            form = form_class()
+            form = form_class()()
 
             html = ""
             if form.validate_on_submit():

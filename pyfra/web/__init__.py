@@ -18,39 +18,48 @@ from ansi2html import Ansi2HTMLConverter
 __all__ = ['page', 'webserver']
 
 
+def dict_replace_if_fn(d):
+    return {
+        k: v() if callable(v) else v
+        for k, v in d.items()
+    }
+
+
 def page(pretty_name=None, display: Literal["raw", "text", "monospace"]="monospace", field_names={}, dropdowns={}, roles=['everyone']):
-    def _fn(callback, pretty_name, field_names, roles, display):
+    def _fn(callback, pretty_name, field_names, roles, display, dropdowns):
 
         sig = inspect.signature(callback)
 
-        class CustomForm(FlaskForm):
-            pass
+        def make_form_class(dropdowns):
+            dropdowns = dict_replace_if_fn(dropdowns)
+            class CustomForm(FlaskForm):
+                pass
 
-        for name in sig.parameters:
-            type = sig.parameters[name].annotation
-            is_required = (sig.parameters[name].default == inspect._empty)
+            for name in sig.parameters:
+                type = sig.parameters[name].annotation
+                is_required = (sig.parameters[name].default == inspect._empty)
 
-            if type == int:
-                field = IntegerField
-            elif type == bool:
-                field = BooleanField
-            else:
-                if name in dropdowns:
-                    field = partial(SelectField, choices=dropdowns[name])
+                if type == int:
+                    field = IntegerField
+                elif type == bool:
+                    field = BooleanField
                 else:
-                    field = StringField
+                    if name in dropdowns:
+                        field = partial(SelectField, choices=dropdowns[name])
+                    else:
+                        field = StringField
 
-            setattr(CustomForm, name, field(
-                field_names.get(name, name), 
-                validators=[DataRequired()] if is_required else [],
-                default = sig.parameters[name].default if not is_required else None
-                ))
+                setattr(CustomForm, name, field(
+                    field_names.get(name, name), 
+                    validators=[DataRequired()] if is_required else [],
+                    default = sig.parameters[name].default if not is_required else None
+                    ))
 
-        if len(sig.parameters) > 0:
-            CustomForm.submit = SubmitField('Submit')
-            form = True
-        else:
-            form = False
+            if len(sig.parameters) > 0:
+                CustomForm.submit = SubmitField('Submit')
+            return CustomForm
+
+        form = len(sig.parameters) > 0
 
         def _callback_wrapper(k):
             html = callback(**k)
@@ -68,13 +77,13 @@ def page(pretty_name=None, display: Literal["raw", "text", "monospace"]="monospa
             
             return html
 
-        register_page(callback.__name__, pretty_name, CustomForm, _callback_wrapper, roles, redirect_index=False, has_form=form)
+        register_page(callback.__name__, pretty_name, partial(make_form_class, dropdowns), _callback_wrapper, roles, redirect_index=False, has_form=form)
     
     # used @form and not @form()
     if callable(pretty_name):
-        return _fn(pretty_name, pretty_name=None, field_names=field_names, roles=roles, display=display)
+        return _fn(pretty_name, pretty_name=None, field_names=field_names, roles=roles, display=display, dropdowns=dropdowns)
 
-    return partial(_fn, pretty_name=pretty_name, field_names=field_names, roles=roles, display=display)
+    return partial(_fn, pretty_name=pretty_name, field_names=field_names, roles=roles, display=display, dropdowns=dropdowns)
 
 
 def gen_pass(stringLength=16):
