@@ -69,3 +69,9 @@ webserver()
 ```pip3 install git+https://github.com/EleutherAI/pyfra/```
 
 The version of PyPI is not up to date, do not use it.
+
+
+## Webserver screenshots
+
+![image](https://user-images.githubusercontent.com/54557097/115158160-2002a380-a04a-11eb-92c3-494d0f7b0895.png)
+![image](https://user-images.githubusercontent.com/54557097/115158135-fc3f5d80-a049-11eb-8310-a43b7b5c58e0.png)
