@@ -20,7 +20,7 @@ Current features:
 
 ## Example code
 
-```
+```python
 from pyfra import *
 
 loc = Remote()
