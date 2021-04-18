@@ -62,6 +62,7 @@ def page(pretty_name=None, display: Literal["raw", "text", "monospace"]="monospa
                 converter = Ansi2HTMLConverter()
                 html = converter.convert(html, full=False)
                 html = f"<span class=\"monospace\">{html}</span>"
+                html += converter.produce_headers()
             else:
                 raise NotImplementedError
             
