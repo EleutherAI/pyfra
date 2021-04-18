@@ -12,6 +12,7 @@ except ModuleNotFoundError:
 from flask_wtf import FlaskForm
 from wtforms import StringField, BooleanField, SubmitField, IntegerField, SelectField
 from wtforms.validators import DataRequired, Email, EqualTo
+from ansi2html import Ansi2HTMLConverter
 
 
 __all__ = ['page', 'webserver']
@@ -58,7 +59,9 @@ def page(pretty_name=None, display: Literal["raw", "text", "monospace"]="monospa
             elif display == "text":
                 html = escape(html)
             elif display == "monospace":
-                html = f"<pre>{html}</pre>"
+                converter = Ansi2HTMLConverter()
+                html = converter.convert(html, full=False)
+                html = f"<span class=\"monospace\">{html}</span>"
             else:
                 raise NotImplementedError
             
