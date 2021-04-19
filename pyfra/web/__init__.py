@@ -15,7 +15,10 @@ from wtforms.validators import DataRequired, Email, EqualTo
 from ansi2html import Ansi2HTMLConverter
 
 
-__all__ = ['page', 'webserver']
+__all__ = [
+    'page', 'webserver', 
+    'current_user' # so we can know who's making each request inside a @page annotated function
+]
 
 
 def dict_replace_if_fn(d):
