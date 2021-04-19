@@ -10,3 +10,6 @@ class Config(object):
     SMTP_PORT = 587
     SMTP_USERNAME = "FILL_THIS_IN"
     SMTP_PASSWORD = "FILL_THIS_IN"
+
+
+os.makedirs(basedir, exist_ok=True)
