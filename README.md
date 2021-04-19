@@ -2,10 +2,11 @@
 
 *The Python Research Framework.*
 
+## Design Philosophy
 
-The objective of pyfra is to make it as *low-friction* as possible to write research code involving complex pipelines over many machines. You'll never have to have a nest of hard-to-maintain bash scripts again!
+Research code has some of the fasteset shifting requirements of any type of code. It's nearly impossible to plan ahead of time the proper abstractions, because it is exceedingly likely that in the course of the project what you originally thought was your main focus suddenly no longer is. Further, research code (especially in ML) often involves big and complicated pipelines, typically involving many different machines, which are either run by hand or using shell scripts that are far more complicated than any shell script ever should be. 
 
-To make the interface intuitive, many functions are named after common shell commands.
+Therefore, the objective of pyfra is to make it as fast and *low-friction* as possible to write research code involving complex pipelines over many machines. This entails making it as easy as possible to implement a research idea in reality, at the cost of fine-grained control and the long-term maintainability of the system. In other words, pyfra expects that code will either be rapidly obsoleted by newer code, or rewritten using some other framework once it is no longer a research project and requirements have settled down.
 
 **Pyfra is in its very early stages of development. The interface may change rapidly and without warning.**
 
