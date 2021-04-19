@@ -129,5 +129,4 @@ dmypy.json
 .pyre/
 
 
-migrations*
 app.db
