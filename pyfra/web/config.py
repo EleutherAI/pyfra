@@ -1,9 +1,9 @@
 import os
-basedir = os.getcwd()
+basedir = os.getcwd() + '/state'
 
 class Config(object):
 
-    SQLALCHEMY_DATABASE_URI = f'sqlite:///{basedir}/app.db'
+    SQLALCHEMY_DATABASE_URI = f'sqlite:///{basedir}/webapp.db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SECRET_KEY = 'FILL_THIS_IN'
     SMTP_SERVER = "smtp.gmail.com"
