@@ -1,246 +1,283 @@
-@media screen
-{        
-    html, body
-    {
-        font-family: 'Open Sans', sans-serif;
-        width: 100%;
-        height: 100%;
-    }
+@media screen {
+  @import url("https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,300;0,400;0,700;0,900;1,300;1,700;1,900&display=swap");
 
-    /* Main Panel - To Show Full Background*/
-    /* ============================================================= */    
-    #main {
-        height: 100%;
-        width: 100%;
-        position: relative;
-        display: flex;
-        flex-direction: column;
-    }
+  html,
+  body {
+    font-family: "Lato", sans-serif;
+    width: 100%;
+    height: 100%;
+    font-size: 16px;
+  }
+  :root {
+    --black: #000000;
+    --green: #699f56;
+    --blue: #34566f;
+    --light-blue: #00bbff;
+    --grey: #959595;
+    --grey2: #d8d8d8;
+    --red: #aa4926;
+    --orange: #cc7832;
+  }
 
-    #main:after
-    {
-        content : "";
-        display: block;
-        position: fixed;
-        top: 0;
-        left: 0;
-        background-image: url("/static/img/background.jpg");
-        background-size: 100% 100%;
-        width: 100%;
-        height: 100%;
-        opacity: 0.3;
-        z-index: -1;
-        background-repeat: no-repeat;
-        background-position: center;
-        background-attachment:fixed;
-    }
+  /* Main Panel - To Show Full Background*/
+  /* ============================================================= */
+  .main {
+    height: 100%;
+    width: 100%;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
 
+  .main:after {
+    content: "";
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    background-image: url("/static/img/background.jpg");
+    background-size: 100% 100%;
+    width: 100%;
+    height: 100%;
+    opacity: 0.3;
+    z-index: -1;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-attachment: fixed;
+  }
 
-    /* Header containing logo and buttons*/
-    /* ============================================================= */    
-    header
-    {
-        padding: 5px;
-        box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.6);
-        background: white;
-        display: flex;
-        flex-direction: row;
-        justify-content: space-between;
-        align-items: center;
-    }
+  /* Header containing logo and buttons*/
+  /* ============================================================= */
+  .header-container {
+    height: 60px;
+    background-color: var(--black);
+    padding-top: 10px;
+  }
 
-    header #buttons
-    {
-        display: flex;
-    }
+  .header-container .content-wrapper {
+    flex-direction: row;
+  }
 
-    header #logo 
-    {
-        height: 40px;
-        margin-left: 10px;        
-    }
+  header .logo-image {
+    width: 40px;
+    height: 40px;
+  }
 
-    #logoutButton
-    {
-        height: 30px;
-    }
+  .content-wrapper {
+    display: flex;
+    margin: 0 auto;
+    padding: 0 0.5em;
+    max-width: 1020px;
+  }
 
-    .buttonBlock
-    {
-        display:flex;
-        flex-direction: column;
-        align-items: center;
-        margin-right: 20px;
-    }
+  .header-left {
+    display: flex;
+  }
+  .header-right {
+    margin-left: auto;
+    text-align: center;
+  }
 
-    .buttonBlock:last-child
-    {
-        margin-left: 20px;
-    }
+  h1.logo-text {
+    font-size: 1.4em;
+    font-weight: 700;
+    text-align: left;
+    margin: 0;
+    padding: 0;
+    border: 0px none;
+    position: relative;
+    left: 12px;
+    top: 12px;
+    font-weight: 400;
+  }
 
+  h1.logo-text a {
+    text-decoration: none;
+    color: white;
+  }
 
-    /* Area to flash messages to user*/
-    /* ============================================================= */    
-    .flashes 
-    {
-        border-top: 1px solid silver;
-        padding: 10px;
-        box-shadow: 0px 2px 5px -2px rgba(0, 0, 0, 0.6);
-        background: white;
-        display: flex;
-        flex-direction: row;
-        justify-content: space-between;
-        align-items: center;
-        z-index: 1;
-    }
+  .header-right a {
+    text-decoration: none;
+    color: white;
+  }
 
-    /* Full Page With Panel with 20px margin to show pretty background
+  .header-right img {
+    width: 20px;
+    height: 20px;
+  }
+
+  span.logout-link {
+    font-size: 0.7em;
+    text-transform: uppercase;
+    display: block;
+    position: relative;
+    bottom: 0px;
+  }
+
+  header .header-buttons {
+    display: flex;
+  }
+
+  .buttonBlock {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-right: 20px;
+    margin-top: 6px;
+  }
+
+  .buttonBlock:last-child {
+    margin-left: 20px;
+  }
+
+  /* Area to flash messages to user*/
+  /* ============================================================= */
+  .flashes {
+    border-top: 1px solid silver;
+    padding: 10px;
+    box-shadow: 0px 2px 5px -2px rgba(0, 0, 0, 0.6);
+    background: white;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 1;
+    color: green;
+  }
+
+  /* Full Page With Panel with 20px margin to show pretty background
     /* ============================================================= */
-    .fullPage
-    {
-        flex-grow: 1;
-        flex-shrink: 1;
-        margin: 20px;
+  .fullPage {
+    flex-grow: 1;
+    flex-shrink: 1;
+    margin: 20px;
 
-        border: 1px solid silver;
-        padding: 20px;
-        box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.3);
-        background: white;
-        display:flex;
-        flex-direction: column;
-        align-items: stretch;
-    }
+    border: 1px solid silver;
+    padding: 20px;
+    box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.3);
+    background: white;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
 
-    /* Full Page With Panel with 20px margin to show pretty background
+  /* Full Page With Panel with 20px margin to show pretty background
     /* ============================================================= */
-    .page1024
-    {
-        width: 1024px;
-        margin: 0 auto;        
-        margin-top: 20px;      
+  .page1024 {
+    width: 1024px;
+    margin: 0 auto;
+    margin-top: 20px;
 
-/*        flex-grow: 1;
+    /*        flex-grow: 1;
         flex-shrink: 1;*/
 
-        border: 1px solid silver;
-        padding: 20px;
-        box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.3);
-        background: white;
+    border: 1px solid silver;
+    padding: 20px;
+    box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.3);
+    background: white;
 
-        display: flex;
-        flex-direction: column;
-        align-items: stretch;
-    }
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
 
+  /* Global styles*/
+  /* ============================================================= */
+  h1 {
+    font-weight: 700;
+    font-size: 28px;
+    margin-bottom: 20px;
+    text-align: center;
+    border-bottom: 1px solid silver;
+    padding-bottom: 10px;
+  }
 
-    /* Global styles*/
-    /* ============================================================= */
-    h1 {
-        font-family: 'Alegreya', serif;
-        font-weight: 700;
-        font-size: 28px;    
-        margin-bottom: 20px;
-        text-align: center;
-        border-bottom: 1px solid silver;
-        padding-bottom: 10px;
-    }
+  /* Login Form */
+  /* ============================================================= */
 
-    /* Login Form */
-    /* ============================================================= */
+  #loginFormPanel {
+    width: 350px;
+    margin: 0 auto;
+    margin-top: 50px;
 
-    #loginFormPanel
-    {
-        width: 350px; 
-        margin: 0 auto;
-        margin-top: 50px;
+    border: 1px solid silver;
+    padding: 30px;
+    padding-top: 25px;
+    padding-bottom: 10px;
+    box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.3);
+    background-color: white;
+  }
 
-        border: 1px solid silver;
-        padding:30px;
-        padding-top: 25px;
-        padding-bottom: 10px;
-        box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.3);
-        background-color: white;
-    }
+  #loginFormPanel h1 {
+    font-weight: 700;
+    font-size: 28px;
+    margin-bottom: 20px;
+    text-align: center;
+    border-bottom: 1px solid silver;
+    padding-bottom: 10px;
+  }
 
-    #loginFormPanel h1 {
-        font-family: 'Alegreya', serif;
-        font-weight: 700;
-        font-size: 28px;    
-        margin-bottom: 20px;
-        text-align: center;
-        border-bottom: 1px solid silver;
-        padding-bottom: 10px;
-    }
+  #loginFormPanel label {
+    display: inline-block;
+    margin-bottom: 5px;
+    font-weight: 600;
+  }
 
-    #loginFormPanel label {
+  #loginFormPanel .inputBlock {
+    margin-bottom: 15px;
+  }
 
-      display: inline-block;
-      margin-bottom: 5px;
-      font-weight: 600;
-    }
+  #loginFormPanel .labelLine {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+  }
 
-    #loginFormPanel .inputBlock {
-        margin-bottom: 15px;
-    }
+  #loginFormPanel input[type="text"],
+  input[type="password"] {
+    width: 100%;
+    font-size: 16px;
+    padding: 5px;
+    font-weight: 400;
+  }
 
-    #loginFormPanel .labelLine 
-    {
-        display: flex;
-        flex-direction: row;
-        justify-content: space-between;
-    }
+  #loginFormPanel input[type="submit"] {
+    width: 100%;
+    font-size: 16px;
+    padding: 5px;
+    margin: 0px;
+    margin-left: -1px;
+    margin-bottom: 10px;
+  }
 
-    #loginFormPanel input[type=text], input[type=password]
-    {
-        width: 100%;
-        font-size: 16px;
-        padding: 5px;
-        font-weight: 400;
-    }
+  #loginFormPanel input[type="checkbox"] {
+    padding: 0px;
+    margin: 0px;
+  }
 
-    #loginFormPanel input[type=submit]
-    {
-        width: 100%;
-        font-size: 16px;
-        padding:5px;
-        margin:0px;
-        margin-left: -1px;
-        margin-bottom: 10px;
-    }
+  #rememberMe {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 15px;
+  }
 
-    #loginFormPanel input[type=checkbox]
-    {
-        padding:0px;
-        margin: 0px;
-    }
+  #loginForm label[for="remember_me"] {
+    font-size: 14px;
+    margin: 0px;
+    margin-left: 5px;
+    font-weight: 400;
+  }
 
-    #rememberMe
-    {
-        display: flex;
-        flex-direction:row;
-        align-items: center;
-        margin-bottom: 15px;
-    }
+  #loginFormPanel a {
+    display: block;
+    margin-bottom: 10px;
+    font-size: 14px;
+    margin-top: 2px;
+  }
 
-    #loginForm label[for=remember_me]
-    {
-        font-size: 14px;
-        margin: 0px;
-        margin-left: 5px;
-        font-weight: 400;
-    }
-
-
-    #loginFormPanel a {
-        display:block;
-        margin-bottom: 10px;
-        font-size: 14px;
-        margin-top: 2px;
-    }
-
-    form .error
-    {
-        color: red;
-        font-size: 14px;
-    }
+  form .error {
+    color: red;
+    font-size: 14px;
+  }
 }

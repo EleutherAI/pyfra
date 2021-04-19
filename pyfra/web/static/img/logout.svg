@@ -1,0 +1,10 @@
+
+<svg width="16px" height="20px" viewBox="0 0 16 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Desktop" transform="translate(-939.000000, -17.000000)" fill="#FFFFFF" fill-rule="nonzero">
+            <g id="bx:bx-power-off" transform="translate(939.000000, 17.500000)">
+                <path d="M11,3.589 C13.928,4.779 16,7.65 16,11 C16,15.411 12.411,19 8,19 C3.589,19 3.3553407e-15,15.411 3.3553407e-15,11 C3.3553407e-15,7.65 2.072,4.779 5,3.589 L5,3.589 L5,5.812 C3.14596303,6.88218858 2.00270413,8.85926429 2,11 C2,14.309 4.691,17 8,17 C11.309,17 14,14.309 14,11 C13.9970902,8.85931961 12.8538865,6.88233921 11,5.812 L11,5.812 Z M9,0 L9,10 L7,10 L7,0 L9,0 Z" id="Combined-Shape"></path>
+            </g>
+        </g>
+    </g>
+</svg>

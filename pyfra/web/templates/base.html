@@ -1,28 +1,49 @@
-<!doctype html>
+<!DOCTYPE html>
 <html class="no-js" lang="">
-
-<head>
-    <meta charset="utf-8">
-    <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
 
     {% if pageTitle %}
-        <title>{{ pageTitle }}</title>
+    <title>{{ pageTitle }}</title>
     {% else %}
-        <title>EleutherAI pyfra internal site</title>
+    <title>EleutherAI pyfra internal site</title>
     {% endif %}
-    <meta name="description" content="">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
 
-    <link rel="manifest" href="site.webmanifest">
-    <link rel="apple-touch-icon" href="icon.png">
-    <link rel="shortcut icon" type="image/jpg" href="{{ url_for('static', filename='favicon.ico') }}"/>
+    <link rel="manifest" href="site.webmanifest" />
+    <link rel="apple-touch-icon" href="icon.png" />
+    <link
+      rel="shortcut icon"
+      type="image/jpg"
+      href="{{ url_for('static', filename='favicon.ico') }}"
+    />
 
-    <link href="https://fonts.googleapis.com/css?family=Yellowtail" rel="stylesheet"> 
-    <link href="https://fonts.googleapis.com/css?family=Open+Sans:400,600,700" rel="stylesheet"> 
-    <link href="https://fonts.googleapis.com/css?family=Alegreya:400,500,700,800" rel="stylesheet"> 
+    <link
+      href="https://fonts.googleapis.com/css?family=Yellowtail"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css?family=Open+Sans:400,600,700"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css?family=Alegreya:400,500,700,800"
+      rel="stylesheet"
+    />
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/reset.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css')}}?{{ range(1, 100000) | random }}">
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/reset.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/main.css')}}?{{ range(1, 100000) | random }}"
+    />
 
     {% block extra_libraries %}{% endblock %}
 
@@ -31,47 +52,57 @@
     <script src="/static/js/plugins.js"></script>
     <script src="/static/js/main.js"></script>
 
-    {% block extra_styles %}{% endblock %}
+    {% block extra_styles %}{% endblock %} {% block extra_scripts %}{% endblock
+    %}
+  </head>
 
-    {% block extra_scripts %}{% endblock %}
-</head>
+  <body>
+    <div id="main" class="main">
+      <!--[if lte IE 9]>
+        <p class="browserupgrade">
+          You are using an <strong>outdated</strong> browser. Please
+          <a href="https://browsehappy.com/">upgrade your browser</a> to improve
+          your experience and security.
+        </p>
+      <![endif]-->
 
-<body>
-    <div id="main">
-
-    <!--[if lte IE 9]>
-    <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="https://browsehappy.com/">upgrade your browser</a> to improve your experience and security.</p>
-    <![endif]-->
-
-    <header>
-        <a href="/"><img id="logo" src="/static/img/eai_logo.png"/></a>
-        <p id="widthheight"></p>
-        <div id="buttons">
-            {% block buttons %}{% endblock %}
-            <div class="buttonBlock">
+      <header class="header-container">
+        <div class="content-wrapper">
+          <div class="header-left">
+            <a href="/">
+              <img
+                id="logo"
+                class="logo-image"
+                src="/static/img/eai_logo.png"
+              />
+            </a>
+            <h1 class="logo-text"><a href="/">Eleuther AI</a></h1>
+          </div>
+          <div class="header-right">
+            <div id="buttons" class="header-buttons">
+              {% block buttons %}{% endblock %}
+              <div class="buttonBlock">
                 <a href="/logout">
-                    <img id="logoutButton" src="static/img/logout.png" />         
+                  <img
+                    id="logoutButton"
+                    class="logout-button"
+                    src="static/img/logout.svg"
+                  />
+                  <span class="logout-link">Logout</span>
                 </a>
-                <a href="/logout"><div>Logout</div></a>
+              </div>
             </div>
+          </div>
         </div>
-    </header>
-    
-    {% with messages = get_flashed_messages() %}
-      {% if messages %}
-        <ul class=flashes>
+      </header>
+
+      {% with messages = get_flashed_messages() %} {% if messages %}
+      <ul class="flashes">
         {% for message in messages %}
-          <li>{{ message }}</li>
+        <li>{{ message }}</li>
         {% endfor %}
-        </ul>
-      {% endif %}
-    {% endwith %}
-
-    {% block content %}{% endblock %}
-
-
+      </ul>
+      {% endif %} {% endwith %} {% block content %}{% endblock %}
     </div>
-
-</body>
-
+  </body>
 </html>
