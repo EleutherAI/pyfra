@@ -1,7 +1,7 @@
 from .iterators import *
 
 
-def id(x):
+def identity(x):
     return x
 
 def pointwise(*fs):
@@ -26,13 +26,24 @@ def foldr(f, init, arr):
 def mean(x):
     return sum(x) / len(x)
 
-def fmap(f):
-    return lambda xs: (f(x) for x in xs)
+class pipeline:
+    def __init__(self, *fs):
+        self.fs = fs
 
-def pipeline(fs):
-    def _fn(x):
-        for f in fs: x = f(x)
+    def __rrshift__(self, other):
+        if isinstance(other, pipeline):
+            return pipeline(other.fs + self.fs)
+        else:
+            return self(other)
+    
+    def __call__(self, x):
+        for f in self.fs: x = f(x)
 
         return x
 
-    return _fn
+class fmap(pipeline):
+    def __init__(self, f):
+        self.fs = [lambda xs: (f(x) for x in xs)]
+
+# alias
+pl = pipeline
