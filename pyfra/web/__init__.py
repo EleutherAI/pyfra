@@ -3,12 +3,14 @@ from functools import wraps, partial
 import inspect
 import string
 import random
+import os
 from html import escape
 try:
     from typing_extensions import Literal
 except ModuleNotFoundError:
     from typing import Literal
 
+from flask_migrate import upgrade
 from flask_wtf import FlaskForm
 from wtforms import StringField, BooleanField, SubmitField, IntegerField, SelectField
 from wtforms.validators import DataRequired, Email, EqualTo
@@ -105,12 +107,18 @@ def adduser(username: str, email: str="example@example.com", roles: str=""):
 
 
 def webserver(debug=False):
+    with app.app_context():
+        migrations_path = os.path.join(os.path.dirname(__file__), "migrations")
+        upgrade(migrations_path) # equivalent to running "flask db upgrade" every load
+
     if User.query.count() == 0:
         # Add temporary admin user
         password = gen_pass()
         add_user("root", "example@example.com", password, "admin")
         print("=================================================")
         print("ADMIN LOGIN CREDENTIALS (WILL ONLY BE SHOWN ONCE)")
+        print("If you forget you'll need to manually add an")
+        print("admin user to the database.")
         print("Username: root")
         print("Password:", password)
         print("=================================================")

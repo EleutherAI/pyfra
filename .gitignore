@@ -3,3 +3,7 @@ build
 dist
 *.egg-info
 env
+pyfra/web/state/webapp.db
+pyfra/web/state/main.db
+state/main.db
+state/webapp.db

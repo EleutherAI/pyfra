@@ -49,9 +49,6 @@ class User(db.Model, UserMixin):
     def get_roles(self):
         return list(set(["everyone"] + self.roles.lower().split(',')))
 
-db.create_all()
-db.session.commit()
-
 @login.user_loader
 def load_user(id):
     return User.query.get(int(id))
