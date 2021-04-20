@@ -67,7 +67,7 @@
       <![endif]-->
 
       <header class="header-container">
-        <div class="content-wrapper">
+        <div class="content-wrapper row">
           <div class="header-left">
             <a href="/">
               <img
@@ -86,7 +86,7 @@
                   <img
                     id="logoutButton"
                     class="logout-button"
-                    src="static/img/logout.svg"
+                    src="{{ url_for('static', filename='img/logout.svg') }}"
                   />
                   <span class="logout-link">Logout</span>
                 </a>
@@ -95,14 +95,15 @@
           </div>
         </div>
       </header>
-
-      {% with messages = get_flashed_messages() %} {% if messages %}
-      <ul class="flashes">
-        {% for message in messages %}
-        <li>{{ message }}</li>
-        {% endfor %}
-      </ul>
-      {% endif %} {% endwith %} {% block content %}{% endblock %}
+      <div class="content-wrapper">
+        {% with messages = get_flashed_messages() %} {% if messages %}
+        <ul class="flashes">
+          {% for message in messages %}
+          <li>{{ message }}</li>
+          {% endfor %}
+        </ul>
+        {% endif %} {% endwith %} {% block content %}{% endblock %}
+      </div>
     </div>
   </body>
 </html>

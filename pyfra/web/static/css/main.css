@@ -9,6 +9,7 @@
     font-size: 16px;
   }
   :root {
+    --white: #ffffff;
     --black: #000000;
     --green: #699f56;
     --blue: #34566f;
@@ -64,10 +65,13 @@
   }
 
   .content-wrapper {
-    display: flex;
     margin: 0 auto;
     padding: 0 0.5em;
-    max-width: 1020px;
+    width: 769px;
+  }
+
+  .row {
+    display: flex;
   }
 
   .header-left {
@@ -122,7 +126,6 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    margin-right: 20px;
     margin-top: 6px;
   }
 
@@ -164,21 +167,13 @@
   /* Full Page With Panel with 20px margin to show pretty background
     /* ============================================================= */
   .page1024 {
-    width: 1024px;
     margin: 0 auto;
     margin-top: 20px;
-
-    /*        flex-grow: 1;
-        flex-shrink: 1;*/
-
     border: 1px solid silver;
     padding: 20px;
     box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.3);
     background: white;
-
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
+    width: 100%;
   }
 
   /* Global styles*/
@@ -279,5 +274,48 @@
   form .error {
     color: red;
     font-size: 14px;
+  }
+
+  /* Dashboard page */
+  /* ============================================================= */
+
+  .dashboard-list {
+    width: 21em;
+    margin: 0 auto;
+  }
+
+  .dashboard-list li {
+    margin-bottom: 20px;
+  }
+
+  .dashboard-list li a {
+    padding: 12px 14px 14px 26px;
+    background-color: var(--blue);
+    color: var(--white);
+    display: block;
+    text-decoration: none;
+    border-radius: 0.6em;
+  }
+
+  .dashboard-list li a > img {
+    position: relative;
+    top: 0.25em;
+    right: 0.8em;
+  }
+
+  .dashboard-list li a:hover {
+    filter: brightness(85%);
+  }
+
+  /* Responsive styles */
+  /* ============================================================= */
+
+  /* Tablet */
+  @media (max-width: 769px) {
+    .content-wrapper {
+      max-width: 769px;
+      flex-direction: row;
+      width: 100%;
+    }
   }
 }
