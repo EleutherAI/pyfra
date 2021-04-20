@@ -1,8 +1,10 @@
 from sqlitedict import SqliteDict
 import hashlib
 import json
+import os
 
 
+os.makedirs('state', exist_ok=True)
 main_state = SqliteDict("state/main.db", autocommit=True)
 
 
