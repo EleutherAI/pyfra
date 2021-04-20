@@ -307,6 +307,54 @@
     filter: brightness(85%);
   }
 
+  .back-button {
+    margin-bottom: 1em;
+  }
+
+  .form-section {
+    /* background-color: green; */
+  }
+
+  .form-section .form-group {
+    margin-bottom: 1.3em;
+  }
+
+  .form-section .form-group input {
+    display: block;
+    margin: 0.7em 0;
+    border: 1px solid var(--grey);
+    padding: 0.5em 1em;
+  }
+
+  .form-section .checkbox {
+    margin-bottom: 1.3em;
+  }
+
+  .form-section .btn.btn-success {
+    padding: 12px 22px;
+    background-color: var(--blue);
+    color: var(--white);
+    display: block;
+    text-decoration: none;
+    border-radius: 0.6em;
+    box-shadow: none;
+    border: 0px none;
+    cursor: pointer;
+    font-size: 1em;
+  }
+
+  .back-button {
+    margin-bottom: 20px;
+  }
+
+  .back-button a {
+    padding: 8px 0px;
+    color: var(--blue);
+    text-decoration: none;
+    font-size: 1em;
+    font-style: italic;
+  }
+
   /* Responsive styles */
   /* ============================================================= */
 
