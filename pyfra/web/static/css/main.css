@@ -50,9 +50,9 @@
   /* Header containing logo and buttons*/
   /* ============================================================= */
   .header-container {
-    height: 60px;
+    height: 3.75em;
     background-color: var(--black);
-    padding-top: 10px;
+    padding-top: 0.625em;
   }
 
   .header-container .content-wrapper {
@@ -67,7 +67,7 @@
   .content-wrapper {
     margin: 0 auto;
     padding: 0 0.5em;
-    width: 769px;
+    width: 40em;
   }
 
   .row {
@@ -84,25 +84,24 @@
 
   h1.logo-text {
     font-size: 1.4em;
-    font-weight: 700;
+    font-weight: 400;
     text-align: left;
     margin: 0;
     padding: 0;
     border: 0px none;
     position: relative;
-    left: 12px;
-    top: 12px;
-    font-weight: 400;
+    left: 0.75em;
+    top: 0.55em;
   }
 
   h1.logo-text a {
     text-decoration: none;
-    color: white;
+    color: var(--white);
   }
 
   .header-right a {
     text-decoration: none;
-    color: white;
+    color: var(--white);
   }
 
   .header-right img {
@@ -126,11 +125,11 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    margin-top: 6px;
+    margin-top: 0.375em;
   }
 
   .buttonBlock:last-child {
-    margin-left: 20px;
+    margin-left: 1.25em;
   }
 
   /* Area to flash messages to user*/
@@ -172,7 +171,7 @@
     border: 1px solid silver;
     padding: 20px;
     box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.3);
-    background: white;
+    background: var(--white);
     width: 100%;
   }
 
@@ -190,7 +189,7 @@
   /* Login Form */
   /* ============================================================= */
 
-  #loginFormPanel {
+  .login-form-panel {
     width: 350px;
     margin: 0 auto;
     margin-top: 50px;
@@ -200,10 +199,10 @@
     padding-top: 25px;
     padding-bottom: 10px;
     box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.3);
-    background-color: white;
+    background-color: var(--white);
   }
 
-  #loginFormPanel h1 {
+  .login-form-panel h1 {
     font-weight: 700;
     font-size: 28px;
     margin-bottom: 20px;
@@ -212,23 +211,29 @@
     padding-bottom: 10px;
   }
 
-  #loginFormPanel label {
+  .login-form-link {
+    color: var(--blue);
+    margin: 1em 0em;
+    display: block;
+  }
+
+  .login-form-panel label {
     display: inline-block;
     margin-bottom: 5px;
     font-weight: 600;
   }
 
-  #loginFormPanel .inputBlock {
+  .login-form-panel .inputBlock {
     margin-bottom: 15px;
   }
 
-  #loginFormPanel .labelLine {
+  .login-form-panel .labelLine {
     display: flex;
     flex-direction: row;
     justify-content: space-between;
   }
 
-  #loginFormPanel input[type="text"],
+  .login-form-panel input[type="text"],
   input[type="password"] {
     width: 100%;
     font-size: 16px;
@@ -236,39 +241,48 @@
     font-weight: 400;
   }
 
-  #loginFormPanel input[type="submit"] {
+  .login-form-panel input[type="submit"] {
     width: 100%;
-    font-size: 16px;
-    padding: 5px;
+    padding: 10px 0px;
     margin: 0px;
     margin-left: -1px;
     margin-bottom: 10px;
+    border: 0px none;
+    border-radius: 10px;
+    background-color: var(--blue);
+    font-size: 1em;
+    cursor: pointer;
+    color: var(--white);
   }
 
-  #loginFormPanel input[type="checkbox"] {
+  .login-form-panel input[type="submit"]:hover {
+    filter: brightness(85%);
+  }
+
+  .login-form-panel input[type="checkbox"] {
     padding: 0px;
     margin: 0px;
   }
 
-  #rememberMe {
+  .remember-me {
     display: flex;
     flex-direction: row;
     align-items: center;
     margin-bottom: 15px;
   }
 
-  #loginForm label[for="remember_me"] {
+  .login-form label[for="remember_me"] {
     font-size: 14px;
     margin: 0px;
     margin-left: 5px;
     font-weight: 400;
   }
 
-  #loginFormPanel a {
+  .login-form-panel a {
     display: block;
     margin-bottom: 10px;
     font-size: 14px;
-    margin-top: 2px;
+    margin-top: 12px;
   }
 
   form .error {
@@ -285,16 +299,17 @@
   }
 
   .dashboard-list li {
-    margin-bottom: 20px;
+    margin-bottom: 1.25em;
   }
 
   .dashboard-list li a {
-    padding: 12px 14px 14px 26px;
+    padding: 0.4em 0.875em 0.8em 1.625em;
     background-color: var(--blue);
     color: var(--white);
     display: block;
     text-decoration: none;
     border-radius: 0.6em;
+    box-sizing: border-box;
   }
 
   .dashboard-list li a > img {
@@ -309,10 +324,6 @@
 
   .back-button {
     margin-bottom: 1em;
-  }
-
-  .form-section {
-    /* background-color: green; */
   }
 
   .form-section .form-group {
@@ -331,7 +342,7 @@
   }
 
   .form-section .btn.btn-success {
-    padding: 12px 22px;
+    padding: 0.75em 1.375em;
     background-color: var(--blue);
     color: var(--white);
     display: block;
@@ -343,8 +354,12 @@
     font-size: 1em;
   }
 
+  .form-section .btn.btn-success:hover {
+    filter: brightness(85%);
+  }
+
   .back-button {
-    margin-bottom: 20px;
+    margin-bottom: 1em;
   }
 
   .back-button a {
@@ -355,13 +370,17 @@
     font-style: italic;
   }
 
+  .back-button a:hover {
+    opacity: 0.8;
+  }
+
   /* Responsive styles */
   /* ============================================================= */
 
   /* Tablet */
   @media (max-width: 769px) {
     .content-wrapper {
-      max-width: 769px;
+      max-width: 40em;
       flex-direction: row;
       width: 100%;
     }

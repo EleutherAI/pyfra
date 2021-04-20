@@ -1,43 +1,57 @@
-{% extends "base.html" %}
-
-{% block extra_libraries %}
-    <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
-    <script>window.jQuery || document.write('<script src="/static/js/vendor/jquery-3.3.1.min.js"><\/script>')</script>
-    <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.0/dist/jquery.validate.js"></script>
-{% endblock %}
-
-{% block content %}
-    <div id="loginFormPanel">            
-        <form id="loginForm" action="" method="post" novalidate>
-            <h1>Eleuther Internal</h1>
-            {{ form.hidden_tag() }}
-            <div class="inputBlock">
-                <label for="name">Username</label>    
-                <input id="name" name="name" required="" size="32" type="text" value="">
-            </div>
-            <div class="inputBlock">
-                <label for="password">Password</label> 
-                <input id="password" name="password" required="" size="32" type="password" value="">
-                <a href="/forgot-password">I Forgot My Password!</a>
-            </div>            
-            <div id="rememberMe">
-                {{ form.remember_me() }} 
-                <label for="remember_me">Keep Me Logged In</label>
-            </div>
-            {{ form.submit() }}        
-        </form>
+{% extends "base.html" %} {% block extra_libraries %}
+<script
+  src="https://code.jquery.com/jquery-3.3.1.min.js"
+  integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+  crossorigin="anonymous"
+></script>
+<script>
+  window.jQuery ||
+    document.write(
+      '<script src="/static/js/vendor/jquery-3.3.1.min.js"><\/script>'
+    );
+</script>
+<script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.0/dist/jquery.validate.js"></script>
+{% endblock %} {% block content %}
+<div id="loginFormPanel" class="login-form-panel">
+  <form id="loginForm" class="login-form" action="" method="post" novalidate>
+    <h1>Eleuther Internal</h1>
+    {{ form.hidden_tag() }}
+    <div class="inputBlock">
+      <label for="name">Username</label>
+      <input id="name" name="name" required="" size="32" type="text" value="" />
     </div>
+    <div class="inputBlock">
+      <label for="password">Password</label>
+      <input
+        id="password"
+        name="password"
+        required=""
+        size="32"
+        type="password"
+        value=""
+      />
+      <a href="/forgot-password" class="login-form-link"
+        >I Forgot My Password!</a
+      >
+    </div>
+    <div id="rememberMe" class="remember-me">
+      {{ form.remember_me() }}
+      <label for="remember_me">Keep Me Logged In</label>
+    </div>
+    {{ form.submit() }}
+  </form>
+</div>
 
-    <script>
-        $("#loginForm").validate({
-            rules: {
-                name: {
-                  required: true,
-                },
-                password: {
-                    required: true
-                }
-            }
-        });
-    </script>
+<script>
+  $("#loginForm").validate({
+    rules: {
+      name: {
+        required: true,
+      },
+      password: {
+        required: true,
+      },
+    },
+  });
+</script>
 {% endblock %}
