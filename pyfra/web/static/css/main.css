@@ -67,7 +67,7 @@
   .content-wrapper {
     margin: 0 auto;
     padding: 0 0.5em;
-    width: 40em;
+    width: 60em;
   }
 
   .row {
@@ -293,6 +293,10 @@
   /* Dashboard page */
   /* ============================================================= */
 
+  .vertical-content-scroll {
+    overflow-y: scroll;
+  }
+
   .dashboard-list {
     width: 21em;
     margin: 0 auto;
@@ -354,6 +358,10 @@
     font-size: 1em;
   }
 
+  .form-body-content {
+    overflow-x: scroll;
+  }
+
   .form-section .btn.btn-success:hover {
     filter: brightness(85%);
   }
@@ -378,7 +386,7 @@
   /* ============================================================= */
 
   /* Tablet */
-  @media (max-width: 769px) {
+  @media (max-width: 960px) {
     .content-wrapper {
       max-width: 40em;
       flex-direction: row;
