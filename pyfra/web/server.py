@@ -46,8 +46,7 @@ registry = PageRegistry()
 def add_user(name, email, password, roles=[]):
     newUser = User(email=email, name=name, roles=roles)
 
-    # automatically hashes
-    newUser.password = password
+    newUser.set_password(password)
 
     db.session.add(newUser)        
     db.session.commit()
@@ -131,7 +130,7 @@ def reset_password(token):
         return redirect(url_for('index'))
     form = ResetPasswordForm()
     if form.validate_on_submit():
-        user.password = form.password.data
+        user.set_password(form.password.data)
         db.session.commit()
         flash('Your password has been reset.')
         return redirect(url_for('login'))
@@ -161,10 +160,7 @@ def login():
     form = LoginForm()
     if form.validate_on_submit():
         user = User.query.filter_by(name=form.name.data).first()
-        if (user):
-            print("User Found: ", user.name)
         if user is None or not user.check_password(form.password.data):
-            print("Invalid password")
             flash('Invalid username or password')
             return redirect(url_for('login'))
         login_user(user, remember=form.remember_me.data)
@@ -188,7 +184,7 @@ class UserAdminView(ModelView):
     edit_modal = True
     can_export = True
 
-    form_columns = ('name', 'email', "password", "roles")
+    form_columns = ('name', 'email', "roles")
     column_exclude_list = ["password_hash"]
     column_searchable_list = ['name', 'email', "roles"]
     column_filters = ['name', 'email', "roles"]
