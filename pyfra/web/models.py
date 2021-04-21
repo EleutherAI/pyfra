@@ -15,7 +15,7 @@ class User(db.Model, UserMixin):
     name = db.Column(db.String(64), index=True, unique=True)
     email = db.Column(db.String(120), index=True)
     password_hash = db.Column(db.String(128))
-    roles = db.Column(db.String(512))
+    roles = db.Column(db.String(512), default="")
 
     def __repr__(self):
         return '<User> Email: {} | Name: {}'.format(self.email, self.name)
@@ -41,7 +41,7 @@ class User(db.Model, UserMixin):
         return User.query.get(id)
     
     def get_roles(self):
-        return list(set(["everyone"] + self.roles.lower().split(',')))
+        return list(set(["everyone"] + (self.roles if self.roles is not None else "").lower().split(',')))
 
 @login.user_loader
 def load_user(id):

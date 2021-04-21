@@ -32,6 +32,7 @@ setuptools.setup(
         'pyjwt',
         'sqlalchemy',
         'wtforms[email]',
-        'ansi2html'
+        'ansi2html',
+        'sqlitedict'
     ]
 )
