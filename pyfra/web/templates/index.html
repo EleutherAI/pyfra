@@ -1,14 +1,17 @@
-{% extends "base.html" %}
+{% extends "base.html" %} {% block content %}
 
-{% block content %}    
-
-    <div class="page1024">
-        <h1>Dashboard</h1>
-        <ul>
-            {% for name, pretty_name in pages %}
-                <li><a href="/{{ name }}">{{ pretty_name }}</a></li>
-            {% endfor %}
-        </ul>
-    </div>
+<div class="page1024">
+  <h1>Dashboard</h1>
+  <ul class="dashboard-list">
+    {% for name, pretty_name in pages %}
+    <li>
+      <a href="/{{ name }}">
+        <img src="../static/img/icon-button-{{ name }}.svg" /> {{ pretty_name
+        }}</a
+      >
+    </li>
+    {% endfor %}
+  </ul>
+</div>
 
 {% endblock %}

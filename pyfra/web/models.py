@@ -4,7 +4,6 @@ from .app import login
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from flask_login import UserMixin
-from sqlalchemy.ext.hybrid import hybrid_property
 
 from time import time
 import jwt
@@ -21,12 +20,7 @@ class User(db.Model, UserMixin):
     def __repr__(self):
         return '<User> Email: {} | Name: {}'.format(self.email, self.name)
 
-    @hybrid_property
-    def password(self):
-        return self.password_hash
-
-    @password.setter
-    def password(self, password):
+    def set_password(self, password):
         self.password_hash = generate_password_hash(password)
  
     def check_password(self, password):
