@@ -133,4 +133,5 @@ def webserver(debug=False):
         print("Username: root")
         print("Password:", password)
         print("=================================================")
+    app.config['TEMPLATES_AUTO_RELOAD'] = True
     app.run(host='0.0.0.0', debug=debug)
