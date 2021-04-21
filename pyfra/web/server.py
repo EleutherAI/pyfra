@@ -120,7 +120,7 @@ def register_page(name, pretty_name, form_class, callback, allowed_roles, redire
 @app.route('/change_password/')
 @login_required
 def change_password():
-    token = current_user.get_reset_password_token()
+    token = current_user.get_reset_password_token().decode()
     return redirect(f'/reset_password/{token}')
 
 @app.route('/reset_password/<token>', methods=['GET', 'POST'])
