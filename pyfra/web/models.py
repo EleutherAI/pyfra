@@ -41,7 +41,7 @@ class User(db.Model, UserMixin):
         return User.query.get(id)
     
     def get_roles(self):
-        return list(set(["everyone"] + self.roles.lower().split(',')))
+        return list(set(["everyone"] + (self.roles if self.roles is not None else "").lower().split(',')))
 
 @login.user_loader
 def load_user(id):
