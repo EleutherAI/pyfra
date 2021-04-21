@@ -106,7 +106,7 @@ def adduser(username: str, email: str="example@example.com", roles: str=""):
     return f"Added user {username} with randomly generated password {password}."
 
 @page("Reset User Password", roles=["admin"])
-def set_password(username: str, new_password: str):
+def set_password(username: str):
     password = gen_pass()
 
     user = User.query.filter_by(name=username).first()
