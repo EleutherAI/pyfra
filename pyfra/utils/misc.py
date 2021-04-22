@@ -5,7 +5,7 @@ import os
 
 
 os.makedirs('state', exist_ok=True)
-main_state = SqliteDict("state/main.db", autocommit=True)
+state = SqliteDict("state/main.db", autocommit=True)
 
 
 def once(fn, name=None):
@@ -18,8 +18,8 @@ def once(fn, name=None):
         arghash = hashlib.sha256(json.dumps([args, kwargs], sort_keys=True)).hexdigest()
 
         key = f"once-{fname}-{arghash}-seen"
-        if key in main_state: return main_state[key]
+        if key in state: return state[key]
         
         ret = fn(*args, **kwargs)
-        main_state[key] = ret
+        state[key] = ret
         return ret
