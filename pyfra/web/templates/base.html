@@ -82,6 +82,7 @@
             <div id="buttons" class="header-buttons">
               {% block buttons %}{% endblock %}
               <div class="buttonBlock">
+                {% if current_user.is_authenticated %}
                 <a href="/logout">
                   <img
                     id="logoutButton"
@@ -90,6 +91,7 @@
                   />
                   <span class="logout-link">Logout</span>
                 </a>
+                {% endif %}
               </div>
             </div>
           </div>
