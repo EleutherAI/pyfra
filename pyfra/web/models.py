@@ -56,7 +56,7 @@ class User(db.Model, UserMixin):
         db.session.commit()
 
     def get(username):
-        return User.query.get(name=username)
+        return User.query.filter_by(name=username).first()
 
 @login.user_loader
 def load_user(id):
