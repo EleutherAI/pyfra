@@ -20,7 +20,7 @@ class User(db.Model, UserMixin):
     attributes = db.Column(db.String(512), default="{}", nullable=False)
 
     def __repr__(self):
-        return '<User> Email: {} | Name: {}'.format(self.email, self.name)
+        return self.name
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -55,8 +55,13 @@ class User(db.Model, UserMixin):
 
         db.session.commit()
 
+    @staticmethod
     def get(username):
         return User.query.filter_by(name=username).first()
+
+    @staticmethod
+    def all():
+        return User.query.all()
 
 @login.user_loader
 def load_user(id):
