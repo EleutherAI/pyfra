@@ -55,6 +55,9 @@ class User(db.Model, UserMixin):
 
         db.session.commit()
 
+    def get(username):
+        return User.query.get(name=username)
+
 @login.user_loader
 def load_user(id):
     return User.query.get(int(id))

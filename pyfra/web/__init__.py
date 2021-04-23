@@ -19,7 +19,8 @@ from ansi2html import Ansi2HTMLConverter
 
 __all__ = [
     'page', 'webserver', 
-    'current_user' # so we can know who's making each request inside a @page annotated function
+    'current_user', # so we can know who's making each request inside a @page annotated function
+    'User'
 ]
 
 
