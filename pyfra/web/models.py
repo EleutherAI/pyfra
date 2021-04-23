@@ -7,6 +7,7 @@ from flask_login import UserMixin
 
 from time import time
 import jwt
+import json
 from .app import app
 
 class User(db.Model, UserMixin):
@@ -16,6 +17,7 @@ class User(db.Model, UserMixin):
     email = db.Column(db.String(120), index=True)
     password_hash = db.Column(db.String(128))
     roles = db.Column(db.String(512), default="")
+    attributes = db.Column(db.String(512), default="{}", nullable=False)
 
     def __repr__(self):
         return '<User> Email: {} | Name: {}'.format(self.email, self.name)
@@ -42,6 +44,16 @@ class User(db.Model, UserMixin):
     
     def get_roles(self):
         return list(set(["everyone"] + (self.roles if self.roles is not None else "").lower().split(',')))
+
+    def get_attr(self, k, default=None):
+        return json.loads(self.attributes).get(k, default)
+    
+    def set_attr(self, k, val):
+        ob = json.loads(self.attributes)
+        ob[k] = val
+        self.attributes = json.dumps(ob)
+
+        db.session.commit()
 
 @login.user_loader
 def load_user(id):
