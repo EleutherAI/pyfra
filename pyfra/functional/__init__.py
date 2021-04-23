@@ -28,11 +28,11 @@ def mean(x):
 
 class pipeline:
     def __init__(self, *fs):
-        self.fs = fs
+        self.fs = list(fs)
 
     def __rrshift__(self, other):
         if isinstance(other, pipeline):
-            return pipeline(other.fs + self.fs)
+            return pipeline(*(other.fs + self.fs))
         else:
             return self(other)
     
@@ -42,8 +42,16 @@ class pipeline:
         return x
 
 class fmap(pipeline):
-    def __init__(self, f):
-        self.fs = [lambda xs: (f(x) for x in xs)]
+    def __init__(self, *f):
+        self.fs = [lambda xs: (pipeline(*f)(x) for x in xs)]
 
+class join(pipeline):
+    def __init__(self):
+        self.fs = [self._join]
+
+    def _join(self, xs):
+        for it in xs:
+            for elem in it:
+                yield elem
 # alias
-pl = pipeline
+do = pipeline
