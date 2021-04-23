@@ -33,7 +33,7 @@ def sh(x, quiet=False):
 def rsh(host, cmd, quiet=False):
     if not quiet: print(f"Connecting to {host}.")
 
-    return sh(f"ssh -q -t {host} {shlex.quote(cmd)}", quiet=quiet)
+    return sh(f"ssh -q -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -t {host} {shlex.quote(cmd)}", quiet=quiet)
 
 def rsync(frm, to, quiet=False):
     frm = repr(frm)
