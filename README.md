@@ -10,8 +10,7 @@ Therefore, the objective of pyfra is to make it as fast and *low-friction* as po
 
 **Pyfra is in its very early stages of development. The interface may change rapidly and without warning.**
 
-
-Current features:
+Features:
 
  - Spin up an internal webserver complete with a permissions system using only a few lines of code
  - Extremely elegant shell integration—run commands on any server seamlessly. All the best parts of bash and python combined
