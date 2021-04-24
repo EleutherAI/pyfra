@@ -18,6 +18,7 @@ Current features:
  - (Coming soon) Tools for painless functional programming in python
  - (Coming soon) Automated remote environment setup, so you never have to worry about provisioning machines by hand again
  - (Coming soon) High level API for experiment management/scheduling and resource provisioning
+ - (Coming soon) Idempotent resumable data pipelines with no cognitive overhead
 
 ## Example code
 
