@@ -19,6 +19,30 @@ def group(arr, fn):
     
     return list(res.values())
 
+def counts(arr):
+    res = collections.defaultdict(int)
+
+    for ob in arr:
+        res[ob] += 1
+    
+    return res
+
+def listify(x):
+    if isinstance(x, str): return x
+
+    ret = []
+    for v in x:
+        if isinstance(v, (str, list, tuple, dict)):
+            ret.append(v)
+            continue
+
+        try:
+            ret.append(listify(iter(v)))
+        except TypeError:
+            ret.append(v)
+    
+    return ret
+
 
 # orders by fn(x), allows computation, and then converts to original order
 class Reorderer:
