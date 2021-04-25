@@ -41,7 +41,7 @@ class pipeline:
 
         return x
 
-class fmap(pipeline):
+class each(pipeline):
     def __init__(self, *f):
         self.fs = [lambda xs: (pipeline(*f)(x) for x in xs)]
 
@@ -53,5 +53,21 @@ class join(pipeline):
         for it in xs:
             for elem in it:
                 yield elem
-# alias
+
+class filt(pipeline):
+    def __init__(self, f):
+        self.fs = [self._filter]
+        self.f = f
+
+    def _filter(self, xs):
+        for elem in xs:
+            if self.f(elem):
+                yield elem
+# aliases
 do = pipeline
+
+builtin_filter = filter
+def filter(*x):
+    if len(x) == 1: return filt(*x)
+    if len(x) == 2: return builtin_filter(*x)
+    assert False
