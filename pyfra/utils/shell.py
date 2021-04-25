@@ -13,7 +13,18 @@ from best_download import download_file
 
 __all__ = ['sh', 'rsh', 'rsync', 'ls', 'rm', 'mv', 'curl', 'wget', 'quote']
 
-def sh(x, quiet=False):
+
+def _wrap_command(x):
+    bashrc_payload = r"""import sys,re; print(re.sub("If not running interactively.+?esac", "", sys.stdin.read(), flags=re.DOTALL).replace('[ -z "$PS1" ] && return', ''))"""
+    x = f"eval \"$(cat ~/.bashrc | python -c {bashrc_payload | quote})\";" + x
+    return x
+
+
+def sh(x, quiet=False, wd=None, wrap=True):
+
+    if wrap: x = _wrap_command(x)
+    if wd: x = f"cd {wd}; {x}"
+
     p = subprocess.Popen(x, shell=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT)
@@ -30,10 +41,14 @@ def sh(x, quiet=False):
     
     return b"".join(ret).decode("utf-8").replace("\r\n", "\n").strip()
 
-def rsh(host, cmd, quiet=False):
+def rsh(host, cmd, quiet=False, wd=None):
     if not quiet: print(f"Connecting to {host}.")
 
-    return sh(f"ssh -q -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -t {host} {shlex.quote(cmd)}", quiet=quiet)
+    if wd: cmd = f"cd {wd}; {cmd}"
+
+    cmd = _wrap_command(cmd)
+
+    return sh(f"ssh -q -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -t {host} {shlex.quote(cmd)}", quiet=quiet, wrap=False)
 
 def rsync(frm, to, quiet=False):
     frm = repr(frm)

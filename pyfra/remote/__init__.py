@@ -23,14 +23,18 @@ class RemoteFile:
 class Remote:
     def __init__(self, ip=None):
         self.ip = ip
+        self.wd = None
 
         # TODO: set up remote
 
+    def cd(self, wd):
+        self.wd = wd
+
     def sh(self, x, quiet=False):
         if self.ip is None:
-            return _utils.sh(x, quiet=quiet)
+            return _utils.sh(x, quiet=quiet, wd=self.wd)
         else:
-            return _utils.rsh(self.ip, x, quiet=quiet)
+            return _utils.rsh(self.ip, x, quiet=quiet, wd=self.wd)
     
     def file(self, fname):
         return RemoteFile(self, fname)
