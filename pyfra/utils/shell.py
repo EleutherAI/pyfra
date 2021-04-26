@@ -15,7 +15,7 @@ __all__ = ['sh', 'rsh', 'rsync', 'ls', 'rm', 'mv', 'curl', 'wget', 'quote']
 
 
 def _wrap_command(x):
-    bashrc_payload = r"""import sys,re; print(re.sub("If not running interactively.+?esac", "", sys.stdin.read(), flags=re.DOTALL).replace('[ -z "$PS1" ] && return', ''))"""
+    bashrc_payload = r"""import sys,re; print(re.sub("If not running interactively.{,128}?esac", "", sys.stdin.read(), flags=re.DOTALL).replace('[ -z "$PS1" ] && return', ''))"""
     x = f"eval \"$(cat ~/.bashrc | python -c {bashrc_payload | quote})\";" + x
     return x
 
@@ -27,7 +27,8 @@ def sh(x, quiet=False, wd=None, wrap=True):
 
     p = subprocess.Popen(x, shell=True,
         stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT)
+        stderr=subprocess.STDOUT,
+        executable="/bin/bash")
     
     ret = []
     while True:
@@ -66,9 +67,9 @@ def rsync(frm, to, quiet=False):
         if to_host == frm_host:
             rsh(frm_host, f"rsync {opts} {frm_path} {to_path}")
         else:
-            sh(f"ssh -q -A {frm_host} rsync {opts} {frm_path} {to}")
+            sh(f"ssh -q -A {frm_host} rsync {opts} {frm_path} {to}", wrap=False)
     else:
-        sh(f"rsync {opts} {frm} {to}")
+        sh(f"rsync {opts} {frm} {to}", wrap=False)
 
 def ls(x):
     return [x + '/' + fn for fn in os.listdir(x)]
