@@ -3,6 +3,7 @@ from collections import namedtuple
 import codecs
 import pickle
 import shlex
+import os
 
 # set up command methods
 methods = ['ls', 'rm', 'mv', 'curl', 'wget',
@@ -28,6 +29,7 @@ class Remote:
         # TODO: set up remote
 
     def cd(self, wd):
+        if wd[-1] == '/': wd = wd[:-1]
         self.wd = wd
 
     def sh(self, x, quiet=False):
@@ -37,7 +39,7 @@ class Remote:
             return _utils.rsh(self.ip, x, quiet=quiet, wd=self.wd)
     
     def file(self, fname):
-        return RemoteFile(self, fname)
+        return RemoteFile(self, os.path.join(self.wd, fname) if self.wd else fname)
 
     def __repr__(self):
         return self.ip if self.ip is not None else "127.0.0.1"
