@@ -42,14 +42,14 @@ def sh(x, quiet=False, wd=None, wrap=True):
     
     return b"".join(ret).decode("utf-8").replace("\r\n", "\n").strip()
 
-def rsh(host, cmd, quiet=False, wd=None):
+def rsh(host, cmd, quiet=False, wd=None, connection_timeout=10):
     if not quiet: print(f"Connecting to {host}.")
 
     if wd: cmd = f"cd {wd}; {cmd}"
 
     cmd = _wrap_command(cmd)
 
-    return sh(f"ssh -q -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -t {host} {shlex.quote(cmd)}", quiet=quiet, wrap=False)
+    return sh(f"ssh -q -oConnectTimeout={connection_timeout} -oBatchMode=yes -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -t {host} {shlex.quote(cmd)}", quiet=quiet, wrap=False)
 
 def rsync(frm, to, quiet=False):
     frm = repr(frm)
