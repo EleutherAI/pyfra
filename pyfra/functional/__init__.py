@@ -26,13 +26,13 @@ def foldr(f, init, arr):
 def mean(x):
     return sum(x) / len(x)
 
-class pipeline:
+class Pipeline:
     def __init__(self, *fs):
         self.fs = list(fs)
 
     def __rrshift__(self, other):
-        if isinstance(other, pipeline):
-            return pipeline(*(other.fs + self.fs))
+        if isinstance(other, Pipeline):
+            return Pipeline(*(other.fs + self.fs))
         else:
             return self(other)
     
@@ -41,11 +41,11 @@ class pipeline:
 
         return x
 
-class each(pipeline):
+class each(Pipeline):
     def __init__(self, *f):
-        self.fs = [lambda xs: (pipeline(*f)(x) for x in xs)]
+        self.fs = [lambda xs: (Pipeline(*f)(x) for x in xs)]
 
-class join(pipeline):
+class join(Pipeline):
     def __init__(self):
         self.fs = [self._join]
 
@@ -54,7 +54,7 @@ class join(pipeline):
             for elem in it:
                 yield elem
 
-class filt(pipeline):
+class filt(Pipeline):
     def __init__(self, f):
         self.fs = [self._filter]
         self.f = f
@@ -64,7 +64,7 @@ class filt(pipeline):
             if self.f(elem):
                 yield elem
 # aliases
-do = pipeline
+do = Pipeline
 
 builtin_filter = filter
 def filter(*x):

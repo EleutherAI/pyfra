@@ -25,3 +25,17 @@ def once(fn, name=None):
         return ret
 
     return _fn
+
+
+# based on code from kindiana
+import multiprocessing.dummy
+def pipeline(*func_list):
+    def _f(in_iter):
+        pools = [multiprocessing.dummy.Pool(1) for _ in func_list]
+        
+        iter = in_iter
+        for pool, func in zip(pools, func_list):
+            iter = pool.imap(func, iter)
+        
+        return iter
+    return _f
