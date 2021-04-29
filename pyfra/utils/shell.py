@@ -51,7 +51,7 @@ def rsh(host, cmd, quiet=False, wd=None, wrap=True, connection_timeout=10):
 
     return sh(f"ssh -q -oConnectTimeout={connection_timeout} -oBatchMode=yes -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -t {host} {shlex.quote(cmd)}", quiet=quiet, wrap=False)
 
-def rsync(frm, to, quiet=False):
+def rsync(frm, to, quiet=False, connection_timeout=10):
     frm = repr(frm)
     to = repr(to)
 
@@ -67,7 +67,7 @@ def rsync(frm, to, quiet=False):
         if to_host == frm_host:
             rsh(frm_host, f"rsync {opts} {frm_path} {to_path}")
         else:
-            sh(f"ssh -q -A {frm_host} rsync {opts} {frm_path} {to}", wrap=False)
+            sh(f"eval \"$(ssh-agent -s)\"; ssh-add ~/.ssh/id_rsa; ssh -q -oConnectTimeout={connection_timeout} -oBatchMode=yes -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -A {frm_host} rsync {opts} {frm_path} {to}", wrap=False)
     else:
         sh(f"rsync {opts} {frm} {to}", wrap=False)
 
