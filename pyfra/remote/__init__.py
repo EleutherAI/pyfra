@@ -32,11 +32,11 @@ class Remote:
         if wd[-1] == '/': wd = wd[:-1]
         self.wd = wd
 
-    def sh(self, x, quiet=False):
+    def sh(self, x, quiet=False, wrap=True):
         if self.ip is None:
-            return _utils.sh(x, quiet=quiet, wd=self.wd)
+            return _utils.sh(x, quiet=quiet, wd=self.wd, wrap=wrap)
         else:
-            return _utils.rsh(self.ip, x, quiet=quiet, wd=self.wd)
+            return _utils.rsh(self.ip, x, quiet=quiet, wd=self.wd, wrap=wrap)
     
     def file(self, fname):
         return RemoteFile(self, os.path.join(self.wd, fname) if self.wd else fname)
@@ -50,7 +50,7 @@ class Remote:
         else:
             packed = codecs.encode(pickle.dumps((cmd, args, kwargs)), "base64").decode()
             self.sh(f"python3 -m pyfra.remote.wrapper {shlex.quote(packed)}")
-            ret = self.sh("cat .pyfra.result; rm .pyfra.result", quiet=True)
+            ret = self.sh("cat .pyfra.result; rm .pyfra.result", quiet=True, wrap=False)
             return pickle.loads(codecs.decode(ret.encode(), "base64"))
 
     # dummy methods
