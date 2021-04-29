@@ -6,12 +6,13 @@ import time
 import shutil
 import shlex
 import errno
+import re
 
 
 from best_download import download_file
 
 
-__all__ = ['sh', 'rsh', 'rsync', 'ls', 'rm', 'mv', 'curl', 'wget', 'quote']
+__all__ = ['sh', 'rsh', 'rsync', 'ls', 'rm', 'mv', 'curl', 'wget', 'quote', 'columns']
 
 
 def _wrap_command(x):
@@ -113,6 +114,8 @@ def wget(url, to=None, checksum=None):
 
     download_file(url, to, checksum)
 
+def columns(x):
+    return re.split((r'\s+'), x)
 
 # convenience function for shlex.quote
 class _quote:
