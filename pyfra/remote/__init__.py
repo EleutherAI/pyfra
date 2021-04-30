@@ -30,7 +30,7 @@ class Remote:
 
     def cd(self, wd):
         if wd[-1] == '/': wd = wd[:-1]
-        self.wd = wd
+        self.wd = os.path.join(self.wd, wd) if self.wd is not None else wd
 
     def sh(self, x, quiet=False, wrap=True):
         if self.ip is None:
