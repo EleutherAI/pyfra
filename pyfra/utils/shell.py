@@ -88,8 +88,9 @@ def rsync(frm, to, quiet=False, connection_timeout=10):
 def ls(x):
     return [x + '/' + fn for fn in os.listdir(x)]
 
-def rm(x):
+def rm(x, no_exists_ok=True):
     # from https://stackoverflow.com/a/41789397
+    if not os.path.exists(x) and no_exists_ok: return
 
     if os.path.isfile(x) or os.path.islink(x):
         os.remove(x)  # remove the file
