@@ -45,7 +45,7 @@ def sh(x, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, ignore_errors=F
             sys.stdout.buffer.write(byte)
             sys.stdout.flush()
 
-        if maxbuflen is None or len(ret) > maxbuflen:
+        if maxbuflen is None or len(ret) < maxbuflen:
             ret.append(byte)
     
     p.communicate()
@@ -56,14 +56,14 @@ def sh(x, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, ignore_errors=F
 
     return ret.decode("utf-8").replace("\r\n", "\n").strip()
 
-def rsh(host, cmd, quiet=False, wd=None, wrap=True, connection_timeout=10):
+def rsh(host, cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, connection_timeout=10, ignore_errors=False):
     if not quiet: print(f"Connecting to {host}.")
 
     if wd: cmd = f"cd {wd}; {cmd}"
 
     if wrap: cmd = _wrap_command(cmd)
 
-    return sh(f"ssh -q -oConnectTimeout={connection_timeout} -oBatchMode=yes -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -t {host} {shlex.quote(cmd)}", quiet=quiet, wrap=False)
+    return sh(f"ssh -q -oConnectTimeout={connection_timeout} -oBatchMode=yes -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -t {host} {shlex.quote(cmd)}", quiet=quiet, wrap=False, maxbuflen=maxbuflen, ignore_errors=ignore_errors)
 
 def rsync(frm, to, quiet=False, connection_timeout=10):
     frm = repr(frm)
