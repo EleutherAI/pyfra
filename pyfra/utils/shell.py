@@ -46,7 +46,7 @@ def sh(x, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, ignore_errors=F
             sys.stdout.flush()
 
         if maxbuflen is None or len(ret) < maxbuflen:
-            ret.append(byte)
+            ret += bytearray(byte)
     
     p.communicate()
     if p.returncode == 174:

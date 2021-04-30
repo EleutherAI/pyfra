@@ -4,6 +4,7 @@ import codecs
 import pickle
 import shlex
 import os
+import random
 
 # set up command methods
 methods = ['ls', 'rm', 'mv', 'curl', 'wget',
@@ -32,11 +33,11 @@ class Remote:
         if wd[-1] == '/': wd = wd[:-1]
         self.wd = os.path.join(self.wd, wd) if self.wd is not None else wd
 
-    def sh(self, x, quiet=False, wrap=True):
+    def sh(self, x, quiet=False, wrap=True, maxbuflen=1000000000, ignore_errors=False):
         if self.ip is None:
-            return _utils.sh(x, quiet=quiet, wd=self.wd, wrap=wrap)
+            return _utils.sh(x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors)
         else:
-            return _utils.rsh(self.ip, x, quiet=quiet, wd=self.wd, wrap=wrap)
+            return _utils.rsh(self.ip, x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors)
     
     def file(self, fname):
         return RemoteFile(self, os.path.join(self.wd, fname) if self.wd else fname)
