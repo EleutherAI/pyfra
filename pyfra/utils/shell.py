@@ -12,17 +12,20 @@ import re
 from best_download import download_file
 
 
+class ShellException(Exception): pass
+
+
 __all__ = ['sh', 'rsh', 'rsync', 'ls', 'rm', 'mv', 'curl', 'wget', 'quote', 'columns']
 
 
 def _wrap_command(x):
     bashrc_payload = r"""import sys,re; print(re.sub("If not running interactively.{,128}?esac", "", sys.stdin.read(), flags=re.DOTALL).replace('[ -z "$PS1" ] && return', ''))"""
     x = f"eval \"$(cat ~/.bashrc | python -c {bashrc_payload | quote})\"; " + x
-    x = "ctrlc() { echo Ctrl-C Interrupted; exit 17582; }; trap ctrlc SIGINT; " + x
+    x = f"ctrlc() {{ echo Shell wrapper interrupted with C-c, raising error; exit 174; }}; trap ctrlc SIGINT; " + x
     return x
 
 
-def sh(x, quiet=False, wd=None, wrap=True):
+def sh(x, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, ignore_errors=False):
 
     if wrap: x = _wrap_command(x)
     if wd: x = f"cd {wd}; {x}"
@@ -32,7 +35,7 @@ def sh(x, quiet=False, wd=None, wrap=True):
         stderr=subprocess.STDOUT,
         executable="/bin/bash")
     
-    ret = []
+    ret = bytearray()
     while True:
         byte = p.stdout.read(1)
 
@@ -41,12 +44,17 @@ def sh(x, quiet=False, wd=None, wrap=True):
         if not quiet:
             sys.stdout.buffer.write(byte)
             sys.stdout.flush()
-        ret.append(byte)
+
+        if maxbuflen is None or len(ret) > maxbuflen:
+            ret.append(byte)
     
     p.communicate()
-    if p.returncode == 17582: raise KeyboardInterrupt()
-    
-    return b"".join(ret).decode("utf-8").replace("\r\n", "\n").strip()
+    if p.returncode == 174:
+        raise KeyboardInterrupt()
+    elif p.returncode != 0 and not ignore_errors:
+        raise ShellException(p.returncode)
+
+    return ret.decode("utf-8").replace("\r\n", "\n").strip()
 
 def rsh(host, cmd, quiet=False, wd=None, wrap=True, connection_timeout=10):
     if not quiet: print(f"Connecting to {host}.")
