@@ -50,7 +50,12 @@ class Remote:
         else:
             packed = codecs.encode(pickle.dumps((cmd, args, kwargs)), "base64").decode()
             self.sh(f"cd {self.wd if self.wd is not None else '.'}; python3 -m pyfra.remote.wrapper {shlex.quote(packed)}")
-            ret = self.fread(".pyfra.result")
+
+            tmpname = ".pyfra.result." + str(random.randint(0, 99999))
+            _utils.rsync(self.file(".pyfra.result"), tmpname)
+            ret = _utils.fread(tmpname)
+            _utils.rm(tmpname)
+
             self.sh("rm .pyfra.result", quiet=True, wrap=False)
             return pickle.loads(codecs.decode(ret.encode(), "base64"))
 
