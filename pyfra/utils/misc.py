@@ -21,17 +21,49 @@ def once(fn, name=None):
         if key in state: return state[key]
         
         ret = fn(*args, **kwargs)
+        print("FINISHED", ret, fn.__name__)
         state[key] = ret
         return ret
 
     return _fn
 
 
-# based on code from kindiana
 import multiprocessing.dummy
+import multiprocessing.pool
+import threading
+import weakref
+
+
+# BEGIN patched section
+
+# this doesnt totally work yet, for some reason, you need to ^C multiple times,
+# but it should be good enough because it makes sure everything grinds to a halt.
+
+class Process(multiprocessing.dummy.DummyProcess):
+    def __init__(self, group=None, target=None, name=None, args=(), kwargs={}):
+        # PATCHED FROM ORIGINAL: use daemon=True
+        threading.Thread.__init__(self, group, target, name, args, kwargs, daemon=True)
+        self._pid = None
+        self._children = weakref.WeakKeyDictionary()
+        self._start_called = False
+        self._parent = multiprocessing.dummy.current_process()
+
+class StoppingThreadPool(multiprocessing.pool.ThreadPool):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    @staticmethod
+    def Process(*args, **kwds):
+        # PATCHED FROM ORIGINAL: use custom Process
+        return Process(*args, **kwds)
+
+
+# END patched section
+
+# based on code from kindiana
 def pipeline(*func_list):
     def _f(in_iter):
-        pools = [multiprocessing.dummy.Pool(1) for _ in func_list]
+        pools = [StoppingThreadPool(1) for _ in func_list]
         
         iter = in_iter
         for pool, func in zip(pools, func_list):
