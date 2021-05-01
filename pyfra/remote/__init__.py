@@ -29,7 +29,11 @@ class Remote:
 
         # TODO: set up remote
 
-    def cd(self, wd):
+    def cd(self, wd=None):
+        if wd is None:
+            self.wd = None
+            return
+
         if wd[-1] == '/': wd = wd[:-1]
         self.wd = os.path.join(self.wd, wd) if self.wd is not None else wd
 
