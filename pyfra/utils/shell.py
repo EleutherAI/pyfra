@@ -20,7 +20,7 @@ __all__ = ['sh', 'rsh', 'rsync', 'ls', 'rm', 'mv', 'curl', 'wget', 'quote', 'col
 
 def _wrap_command(x):
     bashrc_payload = r"""import sys,re; print(re.sub("If not running interactively.{,128}?esac", "", sys.stdin.read(), flags=re.DOTALL).replace('[ -z "$PS1" ] && return', ''))"""
-    x = f"eval \"$(cat ~/.bashrc | python -c {bashrc_payload | quote})\"; " + x
+    x = f"eval \"$(cat ~/.bashrc | python3 -c {bashrc_payload | quote})\"; " + x
     x = f"ctrlc() {{ echo Shell wrapper interrupted with C-c, raising error; exit 174; }}; trap ctrlc SIGINT; " + x
     return x
 
