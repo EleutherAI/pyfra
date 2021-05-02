@@ -1,6 +1,7 @@
 import json
 import csv
-from pyfra.remote import RemoteFile
+import os
+from pyfra.remote import RemoteFile, Remote
 
 __all__ = ['fwrite', 'fread', 'jread', 'jwrite', 'csvread', 'csvwrite']
 
@@ -10,16 +11,17 @@ def fname_fn(fn):
         if isinstance(fname, RemoteFile):
             remfile = fname
             return getattr(remfile.remote, fn.__name__)(remfile.fname, *a, **k)
-        
+
         # map over list if fname is list
-        if isinstance(fname, list):
+        elif isinstance(fname, list):
             fnames = fname
             return [
                 fn(fname, *a, **k)
                 for fname in fnames
             ]
-
-        return fn(fname, *a, **k)
+        
+        else:
+            return fn(os.path.expanduser(fname), *a, **k)
 
     return _fn
 
