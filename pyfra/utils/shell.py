@@ -85,7 +85,7 @@ def rsync(frm, to, quiet=False, connection_timeout=10):
     else:
         sh(f"rsync {opts} {frm} {to}", wrap=False)
 
-def ls(x):
+def ls(x='.'):
     return [x + '/' + fn for fn in os.listdir(x)]
 
 def rm(x, no_exists_ok=True):
