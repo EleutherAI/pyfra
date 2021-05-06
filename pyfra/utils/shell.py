@@ -18,19 +18,20 @@ class ShellException(Exception): pass
 __all__ = ['sh', 'rsh', 'rsync', 'ls', 'rm', 'mv', 'curl', 'wget', 'quote', 'columns']
 
 
-def _wrap_command(x):
+def _wrap_command(x, no_venv=False):
     bashrc_payload = r"""import sys,re; print(re.sub("If not running interactively.{,128}?esac", "", sys.stdin.read(), flags=re.DOTALL).replace('[ -z "$PS1" ] && return', ''))"""
     x = f"eval \"$(cat ~/.bashrc | python3 -c {bashrc_payload | quote})\"; " + x
     x = f"ctrlc() {{ echo Shell wrapper interrupted with C-c, raising error; exit 174; }}; trap ctrlc SIGINT; " + x
+    x = "[ -f env/bin/activate ] && . env/bin/activate" + x
     return x
 
 
-def sh(x, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, ignore_errors=False):
+def sh(cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False):
 
-    if wrap: x = _wrap_command(x)
-    if wd: x = f"cd {wd}; {x}"
+    if wrap: x = _wrap_command(cmd, no_venv=no_venv)
+    if wd: x = f"cd {wd}; {cmd}"
 
-    p = subprocess.Popen(x, shell=True,
+    p = subprocess.Popen(cmd, shell=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         executable="/bin/bash")
@@ -56,14 +57,13 @@ def sh(x, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, ignore_errors=F
 
     return ret.decode("utf-8").replace("\r\n", "\n").strip()
 
-def rsh(host, cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, connection_timeout=10, ignore_errors=False):
+def rsh(host, cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, connection_timeout=10, ignore_errors=False, no_venv=False):
     if not quiet: print(f"Connecting to {host}.")
 
+    if wrap: cmd = _wrap_command(cmd, no_venv=no_venv)
     if wd: cmd = f"cd {wd}; {cmd}"
 
-    if wrap: cmd = _wrap_command(cmd)
-
-    return sh(f"ssh -q -oConnectTimeout={connection_timeout} -oBatchMode=yes -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -t {host} {shlex.quote(cmd)}", quiet=quiet, wrap=False, maxbuflen=maxbuflen, ignore_errors=ignore_errors)
+    return sh(f"ssh -q -oConnectTimeout={connection_timeout} -oBatchMode=yes -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -t {host} {shlex.quote(cmd)}", quiet=quiet, wrap=False, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv)
 
 def rsync(frm, to, quiet=False, connection_timeout=10):
     frm = repr(frm)

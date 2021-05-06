@@ -76,3 +76,8 @@ eval "$(pyenv virtualenv-init -)"
     
     r.sh("pip install virtualenv")
     r.sh("virtualenv --version")
+
+
+def setup_overall(r):
+    pyenv(r)
+    r.sh("pip install -U git+https://github.com/EleutherAI/pyfra/")

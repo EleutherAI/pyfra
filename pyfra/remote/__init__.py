@@ -1,4 +1,5 @@
 from pyfra import utils as _utils
+from .setup import setup_overall
 from collections import namedtuple
 import codecs
 import pickle
@@ -23,25 +24,30 @@ class RemoteFile:
 
 
 class Remote:
-    def __init__(self, ip=None):
+    def __init__(self, ip=None, wd=None):
         self.ip = ip
-        self.wd = None
+        self.wd = wd
 
-        # TODO: set up remote
+        # set up remote
+        setup_overall(self)
 
+        if wd is not None:
+            self.sh(f"mkdir -p {wd | quote}; cd {wd | quote}; virtualenv env")
+
+    # DEPRECATED
     def cd(self, wd=None):
         if wd is None:
-            self.wd = None
-            return
+            return Remote(self.ip, None)
 
         if wd[-1] == '/': wd = wd[:-1]
-        self.wd = os.path.join(self.wd, os.path.expanduser(wd)) if self.wd is not None else wd
+        wd = os.path.join(self.wd, os.path.expanduser(wd)) if self.wd is not None else wd
+        return Remote(self.ip, wd)
 
-    def sh(self, x, quiet=False, wrap=True, maxbuflen=1000000000, ignore_errors=False):
+    def sh(self, x, quiet=False, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False):
         if self.ip is None:
-            return _utils.sh(x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors)
+            return _utils.sh(x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv)
         else:
-            return _utils.rsh(self.ip, x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors)
+            return _utils.rsh(self.ip, x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv)
     
     def file(self, fname):
         return RemoteFile(self, os.path.join(self.wd, os.path.expanduser(fname)) if self.wd else fname)
@@ -122,7 +128,6 @@ class MultiRemote:
     def jwrite(self, *a, **v): pass
     def csvread(self, *a, **v): pass
     def csvwrite(self, *a, **v): pass
-
 
 def command_method(cls, name):
     def _cmd(self, *args, **kwargs):
