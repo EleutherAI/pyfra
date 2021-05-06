@@ -14,8 +14,8 @@ Features:
 
  - Spin up an internal webserver complete with a permissions system using only a few lines of code
  - Extremely elegant shell integration—run commands on any server seamlessly. All the best parts of bash and python combined
- - (Coming soon) Tools for painless functional programming in python
- - (Coming soon) Automated remote environment setup, so you never have to worry about provisioning machines by hand again
+ - Automated remote environment setup, so you never have to worry about provisioning machines by hand again
+ - (WIP) Tools for painless functional programming in python
  - (Coming soon) High level API for experiment management/scheduling and resource provisioning
  - (Coming soon) Idempotent resumable data pipelines with no cognitive overhead
 
