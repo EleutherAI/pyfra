@@ -23,10 +23,14 @@ def once(fn, name=None):
         ret = fn(*args, **kwargs)
         print("FINISHED", ret, fn.__name__)
         state[key] = ret
+        state.commit()
         return ret
 
     return _fn
 
+
+
+# DEPRECATED
 
 import multiprocessing.dummy
 import multiprocessing.pool
