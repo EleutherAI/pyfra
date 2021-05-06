@@ -64,6 +64,15 @@ class Remote:
             self.sh("rm .pyfra.result", quiet=True, wrap=False)
             return pickle.loads(codecs.decode(ret.encode(), "base64"))
 
+    @property
+    def fingerprint(self):
+        self.sh("if [ ! -f ~/.pyfra.fingerprint ]; then cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1 > ~/.pyfra.fingerprint; fi")
+        tmpname = ".fingerprint." + str(random.randint(0, 99999))
+        _utils.rsync(self.file("~/.pyfra.fingerprint"), tmpname)
+        ret = _utils.fread(tmpname)
+        _utils.rm(tmpname)
+        return ret.strip()
+
     # dummy methods
     def ls(self, *a, **v): pass
     def rm(self, *a, **v): pass
