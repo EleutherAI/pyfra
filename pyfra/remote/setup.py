@@ -68,14 +68,20 @@ def install_pyenv(r, version="3.9.4"):
         'python3-openssl',
     ])
     r.sh("curl https://pyenv.run | bash", ignore_errors=True)
+
     payload = """
+# pyfra-managed: pyenv stuff
 export PYENV_ROOT="$HOME/.pyenv"
 export PATH="$PYENV_ROOT/bin:$PATH"
 eval "$(pyenv init --path)"
 eval "$(pyenv init -)"
 eval "$(pyenv virtualenv-init -)"
 """
-    r.sh(f"echo {payload | quote} >> ~/.bashrc")
+    bashrc = r.fread("~/.bashrc")
+
+    if "# pyfra-managed: pyenv stuff" not in bashrc:
+        r.sh(f"echo {payload | quote} >> ~/.bashrc")
+
     r.sh(f"pyenv install -s {version}")
 
     # make sure the versions all check out

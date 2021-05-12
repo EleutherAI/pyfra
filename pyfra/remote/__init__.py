@@ -39,7 +39,7 @@ class Remote:
     # DEPRECATED
     def cd(self, wd=None):
         if wd is None:
-            return Remote(self.ip, None)
+            return Remote(self.ip, None, self.pyenv_version)
 
         if wd[-1] == '/': wd = wd[:-1]
         wd = os.path.join(self.wd, os.path.expanduser(wd)) if self.wd is not None else wd
