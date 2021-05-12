@@ -22,8 +22,8 @@ def _wrap_command(x, no_venv=False, pyenv_version=None):
     bashrc_payload = r"""import sys,re; print(re.sub("If not running interactively.{,128}?esac", "", sys.stdin.read(), flags=re.DOTALL).replace('[ -z "$PS1" ] && return', ''))"""
     hdr = f"ctrlc() {{ echo Shell wrapper interrupted with C-c, raising error; exit 174; }}; trap ctrlc SIGINT; "
     hdr += f"eval \"$(cat ~/.bashrc | python3 -c {bashrc_payload | quote})\" ; "
-    hdr += "[ -f env/bin/activate ] && . env/bin/activate; "
     if pyenv_version is not None: hdr += f"pyenv shell {pyenv_version} ; "
+    hdr += "[ -f env/bin/activate ] && . env/bin/activate; "
     return hdr + x
 
 
@@ -100,6 +100,7 @@ def rm(x, no_exists_ok=True):
     else:
         raise ValueError("file {} is not a file or dir.".format(x))
 
+#DEPRECATED
 # alias shutil function
 mv = shutil.move
 

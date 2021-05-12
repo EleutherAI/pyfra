@@ -3,6 +3,7 @@ from pyfra.utils.shell import *
 from functools import wraps, partial
 
 
+# DEPRECATED
 def install(x=[]):
     deps = x
     if callable(deps):
@@ -59,6 +60,7 @@ def install_pyenv(r, version="3.9.4"):
     apt(r, [
         'build-essential',
         'libbz2-dev',
+        'libffi-dev',
         'libreadline-dev',
         'libsqlite3-dev',
         'libssl-dev',
