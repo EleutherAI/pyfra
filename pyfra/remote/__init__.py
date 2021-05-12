@@ -1,5 +1,5 @@
 from pyfra import utils as _utils
-from .setup import setup_overall
+from .setup import install_pyenv
 from collections import namedtuple
 import codecs
 import pickle
@@ -24,15 +24,18 @@ class RemoteFile:
 
 
 class Remote:
-    def __init__(self, ip=None, wd=None):
+    def __init__(self, ip=None, wd=None, pyenv_version="3.9.4"):
         self.ip = ip
         self.wd = wd
+        self.pyenv_version = pyenv_version
 
         # set up remote
-        setup_overall(self)
+        install_pyenv(self, pyenv_version)
+        self.sh("pip install -U git+https://github.com/EleutherAI/pyfra/")
 
         if wd is not None:
             self.sh(f"mkdir -p {wd | quote}; cd {wd | quote}; [ -f env/bin/activate ] || virtualenv env")
+
 
     # DEPRECATED
     def cd(self, wd=None):
@@ -45,9 +48,9 @@ class Remote:
 
     def sh(self, x, quiet=False, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False):
         if self.ip is None:
-            return _utils.sh(x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv)
+            return _utils.sh(x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=self.pyenv_version)
         else:
-            return _utils.rsh(self.ip, x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv)
+            return _utils.rsh(self.ip, x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=self.pyenv_version)
     
     def file(self, fname):
         return RemoteFile(self, os.path.join(self.wd, os.path.expanduser(fname)) if self.wd else fname)

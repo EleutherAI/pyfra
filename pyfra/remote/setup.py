@@ -1,4 +1,5 @@
-from pyfra import *
+from pyfra.utils.misc import once
+from pyfra.utils.shell import *
 from functools import wraps, partial
 
 
@@ -34,7 +35,10 @@ def apt(r, packages):
 
 
 def ensure_supported(r):
-    supported = ["Ubuntu 18", "Ubuntu 20"]
+    supported = [
+        "Ubuntu 18", "Ubuntu 20", 
+        "stretch"   # debian
+    ]
     def _f(r):
         print("Checking if", r, "is running a supported distro")
 
@@ -48,8 +52,10 @@ def ensure_supported(r):
 ## things to install
 
 
-@install
-def pyenv(r, version="3.9.4"):
+def install_pyenv(r, version="3.9.4"):
+    if r.sh(f"python --version").strip().split(" ")[-1] == version:
+        return
+
     apt(r, [
         'build-essential',
         'libbz2-dev',
@@ -60,13 +66,15 @@ def pyenv(r, version="3.9.4"):
         'python3-openssl',
     ])
     r.sh("curl https://pyenv.run | bash", ignore_errors=True)
-    payload = """export PATH="/home/mchorse/.pyenv/bin:$PATH"
+    payload = """
+export PYENV_ROOT="$HOME/.pyenv"
+export PATH="$PYENV_ROOT/bin:$PATH"
+eval "$(pyenv init --path)"
 eval "$(pyenv init -)"
 eval "$(pyenv virtualenv-init -)"
 """
     r.sh(f"echo {payload | quote} >> ~/.bashrc")
     r.sh(f"pyenv install -s {version}")
-    r.sh(f"pyenv global {version}")
 
     # make sure the versions all check out
     assert r.sh(f"python --version").strip().split(" ")[-1] == version
@@ -80,4 +88,3 @@ eval "$(pyenv virtualenv-init -)"
 
 def setup_overall(r):
     pyenv(r)
-    r.sh("pip install -U git+https://github.com/EleutherAI/pyfra/")
