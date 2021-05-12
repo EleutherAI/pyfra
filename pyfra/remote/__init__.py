@@ -24,18 +24,17 @@ class RemoteFile:
 
 
 class Remote:
-    def __init__(self, ip=None, wd=None, pyenv_version="3.9.4"):
+    def __init__(self, ip=None, wd=None, python_version="3.9.4"):
         self.ip = ip
         self.wd = wd
-        self.pyenv_version = pyenv_version
+        self.pyenv_version = python_version
 
         # set up remote
-        install_pyenv(self, pyenv_version)
+        install_pyenv(self, python_version)
         self.sh("pip install -U git+https://github.com/EleutherAI/pyfra/")
 
         if wd is not None:
-            self.sh(f"mkdir -p {wd | quote}; cd {wd | quote}; [ -f env/bin/activate ] || virtualenv env")
-
+            self.sh(f"mkdir -p {wd | _utils.quote}; cd {wd | _utils.quote}; [ -f env/bin/activate ] || virtualenv env")
 
     # DEPRECATED
     def cd(self, wd=None):
