@@ -43,7 +43,7 @@ class Remote:
 
         if wd[-1] == '/': wd = wd[:-1]
         wd = os.path.join(self.wd, os.path.expanduser(wd)) if self.wd is not None else wd
-        return Remote(self.ip, wd)
+        return Remote(self.ip, wd, self.pyenv_version)
 
     def sh(self, x, quiet=False, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False):
         if self.ip is None:
