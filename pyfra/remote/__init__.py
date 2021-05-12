@@ -32,7 +32,7 @@ class Remote:
         setup_overall(self)
 
         if wd is not None:
-            self.sh(f"mkdir -p {wd | quote}; cd {wd | quote}; virtualenv env")
+            self.sh(f"mkdir -p {wd | quote}; cd {wd | quote}; [ -f env/bin/activate ] || virtualenv env")
 
     # DEPRECATED
     def cd(self, wd=None):
