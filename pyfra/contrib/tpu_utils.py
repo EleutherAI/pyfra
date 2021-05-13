@@ -110,7 +110,7 @@ def config_for(experiment_name, model_size, tpu_size, custom_config, models_buck
 
 def trim_slash(x):
     if x is None: return x
-    if x[-1] == '/': return x
+    if x[-1] == '/': return x[:-1]
     return x
 
 
