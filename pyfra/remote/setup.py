@@ -54,7 +54,7 @@ def ensure_supported(r):
 
 
 def install_pyenv(r, version="3.9.4"):
-    if r.sh(f"python --version").strip().split(" ")[-1] == version:
+    if r.sh(f"python --version", no_venv=True).strip().split(" ")[-1] == version:
         return
 
     apt(r, [
@@ -86,10 +86,10 @@ eval "$(pyenv virtualenv-init -)"
     r.sh(f"pyenv install --verbose -s {version}")
 
     # make sure the versions all check out
-    assert r.sh(f"python --version").strip().split(" ")[-1] == version
-    assert r.sh(f"python3 --version").strip().split(" ")[-1] == version
-    assert version in r.sh("pip --version")
-    assert version in r.sh("pip3 --version")
+    assert r.sh(f"python --version", no_venv=True).strip().split(" ")[-1] == version
+    assert r.sh(f"python3 --version", no_venv=True).strip().split(" ")[-1] == version
+    assert version in r.sh("pip --version", no_venv=True)
+    assert version in r.sh("pip3 --version", no_venv=True)
     
     r.sh("pip install virtualenv")
     r.sh("virtualenv --version")
