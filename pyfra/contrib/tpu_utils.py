@@ -114,7 +114,7 @@ def trim_slash(x):
     return x
 
 
-def train_model(rem, experiment_name, dataset_bucket, tpu_config={}, model_size="1.3B", models_bucket="gs://neo-models", resume_from=None, config={}): 
+def train_model(rem, experiment_name, dataset_bucket, tpu_config={}, model_size="1.3B", models_bucket="gs://neo-models", val_data="gs://neo-d/atasets/pile_val.tfrecords", resume_from=None, config={}): 
     dataset_bucket, models_bucket, resume_from = map(trim_slash, [dataset_bucket, models_bucket, resume_from])
     
     rem.sh(f"cd ~; git clone https://github.com/leogao2/gpt-neo/ ~/neo_{experiment_name} || cd ~/neo_{experiment_name} && git pull", ignore_errors=True)
@@ -127,6 +127,7 @@ def train_model(rem, experiment_name, dataset_bucket, tpu_config={}, model_size=
     data_conf = curl("https://gist.githubusercontent.com/leogao2/a5b53c1ef45e9be167cc7ccbfca7cabc/raw/031b6bb9853d79ec2192a3648022185e3ce2e65d/dataset_config.json") \
         >> do(json.loads)
     data_conf["path"] = f"{dataset_bucket}/*.tfrecords"
+    data_conf["eval_path"] = val_data
     rem.jwrite(f"configs/{experiment_name}.json", config_for(experiment_name, model_size, tpu_size, config, models_bucket))
     rem.jwrite(f"configs/dataset_configs/{experiment_name}_data.json", data_conf)
 
@@ -134,23 +135,27 @@ def train_model(rem, experiment_name, dataset_bucket, tpu_config={}, model_size=
     if resume_from is not None:
         index = latest_model_index(rem, resume_from)
 
+        reset_index = False # reset index doesn't work yet because tf is cursed
+
         original = rem.sh(f"gsutil ls {resume_from}/*{index}*").strip().split("\n") >> filt(lambda x: x.startswith("gs://")) >> do(listify)
         target = original \
-            >> each(lambda x: f"{models_bucket}/{experiment_name}/" + x.replace(f"ckpt-{index}", "ckpt-0").split("/")[-1]) >> do(listify)
+            >> each(lambda x: f"{models_bucket}/{experiment_name}/" + (x.replace(f"ckpt-{index}", "ckpt-0") if reset_index else x).split("/")[-1]) >> do(listify)
         cmd = " & ".join(
             zip(original, target) >> each(lambda x: f"gsutil cp {x[0]} {x[1]}")
         ) + " & wait"
         print(cmd)
         rem.sh(cmd)
 
-
-        ckpt_file = 'model_checkpoint_path: "model.ckpt-0"\nall_model_checkpoint_paths: "model.ckpt-0"'
-        # write checkpoint file
-        rem.sh(f"echo {ckpt_file | quote} > checkpoint; gsutil cp checkpoint {models_bucket}/{experiment_name}/; rm checkpoint")
+        if reset_index:
+            ckpt_file = 'model_checkpoint_path: "model.ckpt-0"\nall_model_checkpoint_paths: "model.ckpt-0"'
+            # write checkpoint file
+            rem.sh(f"echo {ckpt_file | quote} > checkpoint; gsutil cp checkpoint {models_bucket}/{experiment_name}/; rm checkpoint")
+        else:
+            rem.sh(f"gsutil cp {resume_from}/checkpoint {models_bucket}/{experiment_name}/")
 
     make_tpu(rem, tpu_name, **tpu_config)
 
-    rem.sh(f"python3 run_experiment.py --experiment_name {experiment_name} --tpu {tpu_name} --model {experiment_name} --json_save eval_{experiment_name}.jsonl --steps_per_checkpoint 1000" + (" --force_curr_step 0" if resume_from else ""))
+    rem.sh(f"python3 run_experiment.py --experiment_name {experiment_name} --tpu {tpu_name} --model {experiment_name} --json_save eval_{experiment_name}.jsonl --steps_per_checkpoint 1000 --initial_heartbeat_timeout 999999999 --heartbeat_timeout 999999999 --opt_init_step")
 
     rsync(rem.file(f'eval_{experiment_name}.jsonl'), '.')
 
