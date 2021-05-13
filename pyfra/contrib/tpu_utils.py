@@ -40,17 +40,6 @@ def config_for(experiment_name, model_size, tpu_size, custom_config, models_buck
         >> do(json.loads)
     conf['model_path'] = f"{models_bucket}/{experiment_name}"
     conf['datasets'][0][0] = f"{experiment_name}_data"
-    
-    # set batch dim in mesh
-    mesh = conf['mesh_shape'].split(',') >> each(lambda x: x.split(":"))
-    mesh = {k: int(v) for k, v in mesh}
-
-    total_size = 1
-    for v in mesh.values():
-        total_size *= v
-    
-    mesh['bat'] = (mesh['bat'] * tpu_size) // total_size
-    conf['mesh_shape'] = ','.join(mesh.items() >> each(lambda x: f'{x[0]}:{x[1]}'))
 
     if model_size == '125M':
         model_conf = {
@@ -83,6 +72,7 @@ def config_for(experiment_name, model_size, tpu_size, custom_config, models_buck
             "n_head": 32,
             "train_batch_size": 512,
             "lr": 2e-4,
+            "mesh_shape" : "bat:64,y:2",
         }
     elif model_size == '2.7B':
         model_conf = {
@@ -91,6 +81,7 @@ def config_for(experiment_name, model_size, tpu_size, custom_config, models_buck
             "n_head": 32,
             "train_batch_size": 512,
             "lr": 1.6e-4,
+            "mesh_shape" : "bat:64,y:4",
         }
     else:
         raise NotImplementedError
@@ -99,6 +90,18 @@ def config_for(experiment_name, model_size, tpu_size, custom_config, models_buck
 
     for k, v in model_conf.items():
         conf[k] = v
+    
+    # set batch dim in mesh
+    mesh = conf['mesh_shape'].split(',') >> each(lambda x: x.split(":"))
+    mesh = {k: int(v) for k, v in mesh}
+
+    total_size = 1
+    for v in mesh.values():
+        total_size *= v
+    
+    mesh['bat'] = (mesh['bat'] * tpu_size) // total_size
+    conf['mesh_shape'] = ','.join(mesh.items() >> each(lambda x: f'{x[0]}:{x[1]}'))
+
     for k, v in custom_config.items():
         conf[k] = v
 
@@ -140,8 +143,10 @@ def train_model(rem, experiment_name, dataset_bucket, tpu_config={}, model_size=
         print(cmd)
         rem.sh(cmd)
 
+
+        ckpt_file = """model_checkpoint_path: "model.ckpt-0"\nall_model_checkpoint_paths: "model.ckpt-0""""
         # write checkpoint file
-        rem.sh(f"echo 0 > checkpoint; gsutil cp checkpoint {models_bucket}/{experiment_name}/; rm checkpoint")
+        rem.sh(f"echo {ckpt_file | quote} > checkpoint; gsutil cp checkpoint {models_bucket}/{experiment_name}/; rm checkpoint")
 
     make_tpu(rem, tpu_name, **tpu_config)
 
