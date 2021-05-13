@@ -38,7 +38,7 @@ def apt(r, packages):
 def ensure_supported(r):
     supported = [
         "Ubuntu 18", "Ubuntu 20", 
-        "stretch"   # debian
+        "stretch"   # debian stretch
     ]
     def _f(r):
         print("Checking if", r, "is running a supported distro")
@@ -66,6 +66,7 @@ def install_pyenv(r, version="3.9.4"):
         'libssl-dev',
         'make',
         'python3-openssl',
+        'zlib1g-dev',
     ])
     r.sh("curl https://pyenv.run | bash", ignore_errors=True)
 
@@ -77,12 +78,12 @@ eval "$(pyenv init --path)"
 eval "$(pyenv init -)"
 eval "$(pyenv virtualenv-init -)"
 """
-    bashrc = r.fread("~/.bashrc")
+    bashrc = r.sh("cat ~/.bashrc")
 
     if "# pyfra-managed: pyenv stuff" not in bashrc:
         r.sh(f"echo {payload | quote} >> ~/.bashrc")
 
-    r.sh(f"pyenv install -s {version}")
+    r.sh(f"pyenv install --verbose -s {version}")
 
     # make sure the versions all check out
     assert r.sh(f"python --version").strip().split(" ")[-1] == version

@@ -30,7 +30,8 @@ class Remote:
         self.pyenv_version = python_version
 
         # set up remote
-        install_pyenv(self, python_version)
+        if python_version is not None:
+            install_pyenv(self, python_version)
         self.sh("pip install -U git+https://github.com/EleutherAI/pyfra/")
 
         if wd is not None:
