@@ -150,7 +150,7 @@ def train_model(rem, experiment_name, dataset_bucket, tpu_config={}, model_size=
 
     make_tpu(rem, tpu_name, **tpu_config)
 
-    rem.sh(f"python3 run_experiment.py --experiment_name {experiment_name} --tpu {tpu_name} --model {experiment_name} --json_save eval_{experiment_name}.jsonl --steps_per_checkpoint 1000")
+    rem.sh(f"python3 run_experiment.py --experiment_name {experiment_name} --tpu {tpu_name} --model {experiment_name} --json_save eval_{experiment_name}.jsonl --steps_per_checkpoint 1000" + (" --force_curr_step 0" if resume_from else ""))
 
     rsync(rem.file(f'eval_{experiment_name}.jsonl'), '.')
 
