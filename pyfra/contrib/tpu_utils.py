@@ -144,7 +144,7 @@ def train_model(rem, experiment_name, dataset_bucket, tpu_config={}, model_size=
         rem.sh(cmd)
 
 
-        ckpt_file = """model_checkpoint_path: "model.ckpt-0"\nall_model_checkpoint_paths: "model.ckpt-0""""
+        ckpt_file = 'model_checkpoint_path: "model.ckpt-0"\nall_model_checkpoint_paths: "model.ckpt-0"'
         # write checkpoint file
         rem.sh(f"echo {ckpt_file | quote} > checkpoint; gsutil cp checkpoint {models_bucket}/{experiment_name}/; rm checkpoint")
 
