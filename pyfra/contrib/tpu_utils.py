@@ -184,9 +184,19 @@ def slugify(x):
 def convert_neo_to_hf(rem_gcp, rem_hf, model_path, hf_url, config):
     assert 'HF_USER' in os.environ and 'HF_PWD' in os.environ
 
-    rem_hf.sh("""
-    sudo apt install git-lfs
-    pip3 install transformers
+    rem_hf.fwrite("hf_login", f"""
+    spawn transformers-cli login
+    expect "Username:"
+    send "{os.environ['HF_USER']}\n"
+    expect "Password:"
+    send "{os.environ['HF_PWD']}\n"
+    expect "Login successful"
+    exit 0
+    """)
+    rem_hf.sh(f"""
+    sudo apt install git-lfs expect -y
+    pip3 install transformers torch
+    expect ./hf_login ; rm hf_login
     transformers-cli repo ls-files || exit 1
     """)
 
