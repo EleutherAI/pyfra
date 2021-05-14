@@ -7,7 +7,7 @@ def make_tpu(rem, tpu_name, zone="europe-west4-a", project="youdreamof-154365432
     rem.sh("pu --help || pip3 install tpunicorn")
 
     def tpus_by_state(state):
-        return rem.sh("pu list").split('\n')[1:] >> filt(lambda x: state in x) >> each(columns, lambda x: x[4]) >> do(listify)
+        return rem.sh("pu list").split('\n')[1:] >> filt(lambda x: state in x and f"{accelerator_type}-{size}" in x) >> each(columns, lambda x: x[4]) >> do(listify)
 
     live_tpus = tpus_by_state("READY")
     print("live tpus:", live_tpus)
@@ -26,9 +26,9 @@ def make_tpu(rem, tpu_name, zone="europe-west4-a", project="youdreamof-154365432
         print("The following errors are expected, don't panic!")
 
         # this call will fail if the tpu doesn't already exist
-        rem.sh(f"pu recreate {tpu_name} --yes --retry 3600 --retry-randomness 1.5", ignore_errors=True)
+        rem.sh(f"pu delete {tpu_name} --yes", ignore_errors=True)
 
-        # this call will fail if the tpu already exists and the previous call succeeded in making a tpu
+        # this call will fail if the tpu already exists
         rem.sh(f"gcloud compute tpus create {tpu_name} --zone {zone} --project {project} --network default --version {tf_version} --accelerator-type {accelerator_type}-{size} --preemptible", ignore_errors=True)
 
         live_tpus = tpus_by_state("READY")
