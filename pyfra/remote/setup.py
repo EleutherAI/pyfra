@@ -54,7 +54,7 @@ def ensure_supported(r):
 
 
 def install_pyenv(r, version="3.9.4"):
-    if r.sh(f"python --version", no_venv=True).strip().split(" ")[-1] == version:
+    if r.sh(f"python --version", no_venv=True, ignore_errors=True).strip().split(" ")[-1] == version:
         return
 
     apt(r, [

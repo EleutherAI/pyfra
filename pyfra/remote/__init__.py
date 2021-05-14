@@ -32,10 +32,11 @@ class Remote:
         # set up remote
         if python_version is not None:
             install_pyenv(self, python_version)
-        self.sh("pip install -U git+https://github.com/EleutherAI/pyfra/")
 
         if wd is not None:
             self.sh(f"mkdir -p {wd | _utils.quote}; cd {wd | _utils.quote}; [ -f env/bin/activate ] || virtualenv env")
+
+        self.sh("pip install -U git+https://github.com/EleutherAI/pyfra/")
 
     # DEPRECATED
     def cd(self, wd=None):
@@ -63,7 +64,7 @@ class Remote:
             return getattr(_utils, cmd)(*args, **kwargs)
         else:
             packed = codecs.encode(pickle.dumps((cmd, args, kwargs)), "base64").decode()
-            self.sh(f"cd {self.wd if self.wd is not None else '.'}; python3 -m pyfra.remote.wrapper {shlex.quote(packed)}")
+            self.sh(f"python3 -m pyfra.remote.wrapper {shlex.quote(packed)}")
 
             tmpname = ".pyfra.result." + str(random.randint(0, 99999))
             _utils.rsync(self.file(".pyfra.result"), tmpname)
