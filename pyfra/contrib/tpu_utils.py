@@ -2,6 +2,7 @@ from pyfra import *
 import time
 import json
 from parse import parse
+import os
 
 def make_tpu(rem, tpu_name, zone="europe-west4-a", project="youdreamof-1543654322305", tf_version="2.4.0", accelerator_type="v3", size=256):
     rem.sh("pu --help || pip3 install tpunicorn")
@@ -114,7 +115,7 @@ def trim_slash(x):
     return x
 
 
-def train_model(rem, experiment_name, dataset_bucket, tpu_config={}, model_size="1.3B", models_bucket="gs://neo-models", val_data="gs://neo-d/atasets/pile_val.tfrecords", resume_from=None, config={}): 
+def train_model(rem, experiment_name, dataset_bucket, tpu_config={}, model_size="1.3B", models_bucket="gs://neo-models", val_data="gs://neo-d/atasets/pile_val.tfrecords", resume_from=None, config_override={}): 
     dataset_bucket, models_bucket, resume_from = map(trim_slash, [dataset_bucket, models_bucket, resume_from])
     
     rem.sh(f"cd ~; git clone https://github.com/leogao2/gpt-neo/ ~/neo_{experiment_name} || cd ~/neo_{experiment_name} && git pull", ignore_errors=True)
@@ -155,7 +156,7 @@ def train_model(rem, experiment_name, dataset_bucket, tpu_config={}, model_size=
 
     make_tpu(rem, tpu_name, **tpu_config)
 
-    rem.sh(f"python3 run_experiment.py --experiment_name {experiment_name} --tpu {tpu_name} --model {experiment_name} --json_save eval_{experiment_name}.jsonl --steps_per_checkpoint 1000 --initial_heartbeat_timeout 999999999 --heartbeat_timeout 999999999 --opt_init_step")
+    rem.sh(f"python3 run_experiment.py --experiment_name {experiment_name} --tpu {tpu_name} --model {experiment_name} --json_save eval_{experiment_name}.jsonl --steps_per_checkpoint 1000 --opt_init_step")
 
     rsync(rem.file(f'eval_{experiment_name}.jsonl'), '.')
 
@@ -172,3 +173,69 @@ def latest_model_index(rem, model_path):
 
     return latest
 
+
+def slugify(x):
+    for p in r'/!?.~':
+        x = x.replace(p, '_')
+    
+    return x
+
+
+def convert_neo_to_hf(rem_gcp, rem_hf, model_path, hf_url, config):
+    assert 'HF_USER' in os.environ and 'HF_PWD' in os.environ
+
+    rem_hf.sh("""
+    sudo apt install git-lfs
+    pip3 install transformers
+    transformers-cli repo ls-files || exit 1
+    """)
+
+    latest = latest_model_index(rem_gcp, 
+    model_path)
+
+    rem_gcp = rem_gcp.cd(slugify(hf_url))
+    rem_gcp.sh(f"""
+    rm -rf ~/.cache/huggingface/
+    
+    # copying model files
+    mkdir -p model
+    [ -f model/model.ckpt-{latest}.meta ] || gsutil -m cp {model_path}/*{latest}* model/
+    gsutil cp {model_path}/checkpoint model/
+    """).split('\n')
+
+    rem_gcp.jwrite(f"config.json", config)
+
+    rem_gcp.sh(f"""
+    pip install git+https://github.com/leogao2/transformers@patch-3 torch tensorflow
+    wget -c https://raw.githubusercontent.com/huggingface/transformers/master/src/transformers/models/gpt_neo/convert_gpt_neo_mesh_tf_to_pytorch.py
+    
+    mkdir output
+    [ -f output/pytorch_model.bin ] || python3 convert_gpt_neo_mesh_tf_to_pytorch.py --tf_checkpoint_path model --config_file config.json --pytorch_dump_path output
+    """)
+
+    sh(f"mkdir -p converted/")
+    rsync(rem_gcp.file(f"output/"), rem_hf.file(f"converted/{slugify(hf_url)}_tmp/"))
+    
+    rem_gcp.cd().rm(slugify(hf_url))
+
+    org, repo = hf_url.split("/")
+    rem_hf.sh(f"""
+    transformers-cli repo create {repo} --organization {org} -y
+    cd converted/
+    git clone https://{os.environ['HF_USER']}:{os.environ['HF_PWD']}@huggingface.co/{hf_url} {slugify(hf_url)}
+    cd {slugify(hf_url)}
+
+    git lfs install
+    git checkout -b main
+    transformers-cli lfs-enable-largefiles .
+    mv ../{slugify(hf_url)}_tmp/* .
+    wget -c https://huggingface.co/EleutherAI/gpt-neo-125M/raw/main/merges.txt
+    wget -c https://huggingface.co/EleutherAI/gpt-neo-125M/raw/main/special_tokens_map.json
+    wget -c https://huggingface.co/EleutherAI/gpt-neo-125M/raw/main/tokenizer_config.json
+    wget -c https://huggingface.co/EleutherAI/gpt-neo-125M/raw/main/vocab.json
+
+    git add .
+    git commit -am "Add model"
+    git push origin main
+    rm -rf ../{slugify(hf_url)}_tmp
+    """)
