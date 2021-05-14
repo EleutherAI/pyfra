@@ -97,9 +97,9 @@ def rsync(frm, to, quiet=False, connection_timeout=10):
     to = repr(to)
 
     if quiet:
-        opts = "-arq"
+        opts = "-e \"ssh -o StrictHostKeyChecking=no\" -arq"
     else:
-        opts = "-ar --info=progress2"
+        opts = "-e \"ssh -o StrictHostKeyChecking=no\" -ar --info=progress2"
 
     if ":" in frm and ":" in to:
         frm_host, frm_path = frm.split(":")
@@ -108,7 +108,8 @@ def rsync(frm, to, quiet=False, connection_timeout=10):
         if to_host == frm_host:
             rsh(frm_host, f"rsync {opts} {frm_path} {to_path}")
         else:
-            sh(f"eval \"$(ssh-agent -s)\"; ssh-add ~/.ssh/id_rsa; ssh -q -oConnectTimeout={connection_timeout} -oBatchMode=yes -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -A {frm_host} rsync {opts} {frm_path} {to}", wrap=False)
+            rsync_cmd = f"rsync {opts} {frm_path} {to}"
+            sh(f"eval \"$(ssh-agent -s)\"; ssh-add ~/.ssh/id_rsa; ssh -q -oConnectTimeout={connection_timeout} -oBatchMode=yes -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -A {frm_host} {rsync_cmd | quote}", wrap=False)
     else:
         sh(f"rsync {opts} {frm} {to}", wrap=False)
 
