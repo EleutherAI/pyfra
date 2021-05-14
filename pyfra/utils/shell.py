@@ -7,6 +7,7 @@ import shutil
 import shlex
 import errno
 import re
+from colorama import Fore, Style
 
 
 from best_download import download_file
@@ -27,7 +28,7 @@ def _wrap_command(x, no_venv=False, pyenv_version=None):
     return hdr + x
 
 
-def sh(cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False, pyenv_version=None):
+def _sh(cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False, pyenv_version=None):
 
     if wrap: x = _wrap_command(cmd, no_venv=no_venv, pyenv_version=pyenv_version)
     if wd: x = f"cd {wd}; {cmd}"
@@ -58,13 +59,25 @@ def sh(cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, ignore_errors
 
     return ret.decode("utf-8").replace("\r\n", "\n").strip()
 
+
+def sh(cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False, pyenv_version=None):
+    return rsh("127.0.0.1", cmd, quiet, wd, wrap, maxbuflen, ignore_errors, no_venv, pyenv_version)
+
+
 def rsh(host, cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, connection_timeout=10, ignore_errors=False, no_venv=False, pyenv_version=None):
-    if not quiet: print(f"Connecting to {host}.")
+    if host is None: host = "127.0.0.1"
+
+    if not quiet:
+        cmd_fmt = cmd.strip().replace('\n', f'\n{ " " * len(str(host))} {Fore.GREEN}{Style.BRIGHT}>>>{Style.RESET_ALL} ')
+        print(f"{Fore.BLUE}{Style.BRIGHT}{host}{Style.RESET_ALL} {Fore.GREEN}{Style.BRIGHT}>>>{Style.RESET_ALL} {cmd_fmt}")
+    
+    if host == "127.0.0.1":
+        return _sh(cmd, quiet, wd, wrap, maxbuflen, ignore_errors, no_venv, pyenv_version)
 
     if wrap: cmd = _wrap_command(cmd, no_venv=no_venv, pyenv_version=pyenv_version)
     if wd: cmd = f"cd {wd}; {cmd}"
 
-    return sh(f"ssh -q -oConnectTimeout={connection_timeout} -oBatchMode=yes -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -t {host} {shlex.quote(cmd)}", quiet=quiet, wrap=False, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv)
+    return _sh(f"ssh -q -oConnectTimeout={connection_timeout} -oBatchMode=yes -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -t {host} {shlex.quote(cmd)}", quiet=quiet, wrap=False, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv)
 
 def rsync(frm, to, quiet=False, connection_timeout=10):
     frm = repr(frm)

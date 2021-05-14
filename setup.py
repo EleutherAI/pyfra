@@ -33,6 +33,7 @@ setuptools.setup(
         'sqlalchemy',
         'wtforms[email]',
         'ansi2html',
-        'sqlitedict'
+        'sqlitedict',
+        'colorama'
     ]
 )
