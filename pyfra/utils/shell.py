@@ -68,8 +68,21 @@ def rsh(host, cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, connec
     if host is None: host = "127.0.0.1"
 
     if not quiet:
-        cmd_fmt = cmd.strip().replace('\n', f'\n{ " " * len(str(host))} {Fore.GREEN}{Style.BRIGHT}>>>{Style.RESET_ALL} ')
-        print(f"{Fore.BLUE}{Style.BRIGHT}{host}{Style.RESET_ALL} {Fore.GREEN}{Style.BRIGHT}>>>{Style.RESET_ALL} {cmd_fmt}")
+        # display colored message
+        host_style = Fore.GREEN+Style.BRIGHT
+        sep_style = Style.NORMAL
+        cmd_style = Fore.WHITE+Style.BRIGHT
+        dir_style = Fore.BLUE+Style.BRIGHT
+        hoststr = str(host)
+        if wd is not None: 
+            wd_display = wd
+            if not wd.startswith("~/"):
+                wd_display = os.path.join("~", wd)
+        else:
+            wd_display = "~"
+        hoststr += f"{Style.RESET_ALL}:{dir_style}{wd_display}{Style.RESET_ALL}"
+        cmd_fmt = cmd.strip().replace('\n', f'\n{ " " * (len(str(host)) + 1 + len(wd_display))}{sep_style}> {Style.RESET_ALL}{cmd_style} ')
+        print(f"{host_style}{hoststr}{Style.RESET_ALL}{sep_style}$ {Style.RESET_ALL}{cmd_style}{cmd_fmt}{Style.RESET_ALL}")
     
     if host == "127.0.0.1":
         return _sh(cmd, quiet, wd, wrap, maxbuflen, ignore_errors, no_venv, pyenv_version)
