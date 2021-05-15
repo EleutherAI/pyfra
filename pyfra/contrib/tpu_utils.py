@@ -223,7 +223,7 @@ def convert_neo_to_hf(rem_gcp, rem_hf, model_path, hf_url, config):
     [ -f output/pytorch_model.bin ] || python3 convert_gpt_neo_mesh_tf_to_pytorch.py --tf_checkpoint_path model --config_file config.json --pytorch_dump_path output
     """)
 
-    sh(f"mkdir -p converted/")
+    rem_hf.sh(f"mkdir -p converted/")
     rsync(rem_gcp.file(f"output/"), rem_hf.file(f"converted/{slugify(hf_url)}_tmp/"))
     
     rem_gcp.cd().rm(slugify(hf_url))
