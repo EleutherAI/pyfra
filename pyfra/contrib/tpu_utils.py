@@ -129,30 +129,33 @@ def train_model(rem, experiment_name, dataset_bucket, tpu_config={}, model_size=
         >> do(json.loads)
     data_conf["path"] = f"{dataset_bucket}/*.tfrecords"
     data_conf["eval_path"] = val_data
-    rem.jwrite(f"configs/{experiment_name}.json", config_for(experiment_name, model_size, tpu_size, config, models_bucket))
+    rem.jwrite(f"configs/{experiment_name}.json", config_for(experiment_name, model_size, tpu_size, config_override, models_bucket))
     rem.jwrite(f"configs/dataset_configs/{experiment_name}_data.json", data_conf)
-
     # if resuming, copy from old dir
     if resume_from is not None:
-        index = latest_model_index(rem, resume_from)
+        try:
+            train_index = latest_model_index(rem, f"{models_bucket}/{experiment_name}")
+        except IndexError:
+            train_index = 0
+        if train_index == 0:
+            resume_index = latest_model_index(rem, resume_from)
+            reset_index = False # reset index doesn't work yet because tf is cursed
 
-        reset_index = False # reset index doesn't work yet because tf is cursed
+            original = rem.sh(f"gsutil ls {resume_from}/*{resume_index}*").strip().split("\n") >> filt(lambda x: x.startswith("gs://")) >> do(listify)
+            target = original \
+                >> each(lambda x: f"{models_bucket}/{experiment_name}/" + (x.replace(f"ckpt-{resume_index}", "ckpt-0") if reset_index else x).split("/")[-1]) >> do(listify)
+            cmd = " & ".join(
+                zip(original, target) >> each(lambda x: f"gsutil cp {x[0]} {x[1]}")
+            ) + " & wait"
+            print(cmd)
+            rem.sh(cmd)
 
-        original = rem.sh(f"gsutil ls {resume_from}/*{index}*").strip().split("\n") >> filt(lambda x: x.startswith("gs://")) >> do(listify)
-        target = original \
-            >> each(lambda x: f"{models_bucket}/{experiment_name}/" + (x.replace(f"ckpt-{index}", "ckpt-0") if reset_index else x).split("/")[-1]) >> do(listify)
-        cmd = " & ".join(
-            zip(original, target) >> each(lambda x: f"gsutil cp {x[0]} {x[1]}")
-        ) + " & wait"
-        print(cmd)
-        rem.sh(cmd)
-
-        if reset_index:
-            ckpt_file = 'model_checkpoint_path: "model.ckpt-0"\nall_model_checkpoint_paths: "model.ckpt-0"'
-            # write checkpoint file
-            rem.sh(f"echo {ckpt_file | quote} > checkpoint; gsutil cp checkpoint {models_bucket}/{experiment_name}/; rm checkpoint")
-        else:
-            rem.sh(f"gsutil cp {resume_from}/checkpoint {models_bucket}/{experiment_name}/")
+            if reset_index:
+                ckpt_file = 'model_checkpoint_path: "model.ckpt-0"\nall_model_checkpoint_paths: "model.ckpt-0"'
+                # write checkpoint file
+                rem.sh(f"echo {ckpt_file | quote} > checkpoint; gsutil cp checkpoint {models_bucket}/{experiment_name}/; rm checkpoint")
+            else:
+                rem.sh(f"gsutil cp {resume_from}/checkpoint {models_bucket}/{experiment_name}/")
 
     make_tpu(rem, tpu_name, **tpu_config)
 
@@ -205,7 +208,7 @@ def convert_neo_to_hf(rem_gcp, rem_hf, model_path, hf_url, config):
 
     rem_gcp = rem_gcp.cd(slugify(hf_url))
     rem_gcp.sh(f"""
-    rm -rf ~/.cache/huggingface/
+    # rm -rf ~/.cache/huggingface/
     
     # copying model files
     mkdir -p model
