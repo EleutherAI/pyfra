@@ -1,5 +1,6 @@
 from .iterators import *
 from .lambdas import *
+from functools import partial
 
 
 def identity(x):
@@ -48,6 +49,10 @@ class Pipeline:
     def __init__(self, *fs):
         self.fs = list(fs)
 
+    def __rshift__(self, other):
+        assert isinstance(other, Pipeline)
+        return Pipeline(*(self.fs + other.fs))
+
     def __rrshift__(self, other):
         if isinstance(other, Pipeline):
             return Pipeline(*(other.fs + self.fs))
@@ -65,7 +70,7 @@ class each(Pipeline):
 
 class join(Pipeline):
     def __init__(self):
-        self.fs = [SmartIter(self._join)]
+        self.fs = [do(self._join, SmartIter)]
 
     def _join(self, xs):
         for it in xs:
@@ -74,12 +79,11 @@ class join(Pipeline):
 
 class filt(Pipeline):
     def __init__(self, f):
-        self.fs = [SmartIter(self._filter)]
-        self.f = f
+        self.fs = [do(partial(self._filter, f), SmartIter)]
 
-    def _filter(self, xs):
+    def _filter(self, f,xs):
         for elem in xs:
-            if self.f(elem):
+            if f(elem):
                 yield elem
 # aliases
 do = Pipeline
