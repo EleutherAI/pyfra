@@ -1,5 +1,4 @@
 from .iterators import *
-from .lambdas import *
 from functools import partial
 
 
