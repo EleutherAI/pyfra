@@ -1,4 +1,5 @@
 from .iterators import *
+from .lambdas import *
 
 
 def identity(x):
@@ -26,6 +27,23 @@ def foldr(f, init, arr):
 def mean(x):
     return sum(x) / len(x)
 
+class SmartIter:
+    def __init__(self, v):
+        self.v = v
+        self.clean = True
+    def __next__(self):
+        self.clean = False
+        return next(self.v)
+    def __iter__(self):
+        return self
+    def __getattr__(self, attr):
+        return getattr(self.v, attr)
+    def __repr__(self):
+        self.v = listify(self.v)
+        ret = repr(self.v)
+        self.v = iter(self.v)
+        return ret
+
 class Pipeline:
     def __init__(self, *fs):
         self.fs = list(fs)
@@ -43,11 +61,11 @@ class Pipeline:
 
 class each(Pipeline):
     def __init__(self, *f):
-        self.fs = [lambda xs: (Pipeline(*f)(x) for x in xs)]
+        self.fs = [lambda xs: SmartIter(Pipeline(*f)(x) for x in xs)]
 
 class join(Pipeline):
     def __init__(self):
-        self.fs = [self._join]
+        self.fs = [SmartIter(self._join)]
 
     def _join(self, xs):
         for it in xs:
@@ -56,7 +74,7 @@ class join(Pipeline):
 
 class filt(Pipeline):
     def __init__(self, f):
-        self.fs = [self._filter]
+        self.fs = [SmartIter(self._filter)]
         self.f = f
 
     def _filter(self, xs):
