@@ -39,12 +39,19 @@ class Remote:
         self.sh("pip install -U git+https://github.com/EleutherAI/pyfra/")
 
     # DEPRECATED
-    def cd(self, wd=None):
+    def cd(self, wd=None, git=None):
+        return self.env(wd, git)
+
+    def env(self, wd=None, git=None):
         if wd is None:
             return Remote(self.ip, None, self.pyenv_version)
 
         if wd[-1] == '/': wd = wd[:-1]
         wd = os.path.join(self.wd, os.path.expanduser(wd)) if self.wd is not None else wd
+
+        if git is not None:
+            self.sh(f"{{ git clone {git} {wd} && pip install -e . || pip install -r requirements.txt; }} || {{ cd {wd}; before=$(git rev-parse HEAD); git pull || exit 1; after=$(git rev-parse HEAD); [ $before = $after ] || {{ pip install -e . || pip install -r requirements.txt || true; }}; }}")
+
         return Remote(self.ip, wd, self.pyenv_version)
 
     def sh(self, x, quiet=False, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False):
