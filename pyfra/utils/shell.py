@@ -93,8 +93,8 @@ def rsh(host, cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, connec
     return _sh(f"ssh -q -oConnectTimeout={connection_timeout} -oBatchMode=yes -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -t {host} {shlex.quote(cmd)}", quiet=quiet, wrap=False, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv)
 
 def rsync(frm, to, quiet=False, connection_timeout=10, symlink_ok=True):
-    frm = repr(frm)
-    to = repr(to)
+    frm = str(frm)
+    to = str(to)
 
     if quiet:
         opts = "-e \"ssh -o StrictHostKeyChecking=no\" -arq"
@@ -122,7 +122,7 @@ def rsync(frm, to, quiet=False, connection_timeout=10, symlink_ok=True):
             rsync_cmd = f"rsync {opts} {frm_path} {to}"
             sh(f"eval \"$(ssh-agent -s)\"; ssh-add ~/.ssh/id_rsa; ssh -q -oConnectTimeout={connection_timeout} -oBatchMode=yes -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -A {frm_host} {rsync_cmd | quote}", wrap=False)
     else:
-        if symlink_ok:
+        if symlink_ok and ":" not in frm and ":" not in to:
             sh(f"ln -s {symlink_frm(frm)} {to}")
         else:
             sh(f"rsync {opts} {frm} {to}", wrap=False)
