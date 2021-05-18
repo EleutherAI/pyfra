@@ -115,7 +115,7 @@ def rsync(frm, to, quiet=False, connection_timeout=10, symlink_ok=True):
 
         if to_host == frm_host:
             if symlink_ok:
-                rsh(frm_host, f"ln -s {symlink_frm(frm)} {to}")
+                rsh(frm_host, f"ln -s {symlink_frm(frm_path)} {to_path}")
             else:
                 rsh(frm_host, f"rsync {opts} {frm_path} {to_path}")
         else:
