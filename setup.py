@@ -34,6 +34,7 @@ setuptools.setup(
         'wtforms[email]',
         'ansi2html',
         'sqlitedict',
-        'colorama'
+        'colorama',
+        'parse',
     ]
 )
