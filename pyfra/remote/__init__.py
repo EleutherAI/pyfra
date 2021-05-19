@@ -40,7 +40,7 @@ class Remote:
             install_pyenv(self, python_version)
 
         if wd is not None:
-            self.sh(f"mkdir -p {wd | _utils.quote}; cd {wd | _utils.quote}; [ -f env/bin/activate ] || virtualenv env")
+            self.sh(f"mkdir -p {wd | _utils.quote}; cd {wd | _utils.quote}; [ -d env/lib/python{python_version.rsplit('.')[0]} ] || rm -rf env ; pyenv shell {python_version} ; [ -f env/bin/activate ] || virtualenv env", no_venv=True)
 
         self.sh("pip install -U git+https://github.com/EleutherAI/pyfra/")
 
@@ -55,10 +55,13 @@ class Remote:
         if wd[-1] == '/': wd = wd[:-1]
         wd = os.path.join(self.wd, os.path.expanduser(wd)) if self.wd is not None else wd
 
-        if git is not None:
-            self.sh(f"{{ git clone {git} {wd} && pip install -e . || pip install -r requirements.txt; }} || {{ cd {wd}; before=$(git rev-parse HEAD); git pull || exit 1; after=$(git rev-parse HEAD); [ $before = $after ] || {{ pip install -e . || pip install -r requirements.txt || true; }}; }}")
+        newrem = Remote(self.ip, wd, self.pyenv_version)
 
-        return Remote(self.ip, wd, self.pyenv_version)
+        if git is not None:
+            # TODO: make this usable
+            newrem.sh(f"{{ rm -rf .tmp_git_repo ; git clone {git} .tmp_git_repo ; rsync -ar .tmp_git_repo/ ~/{wd}/ ; rm -rf .tmp_git_repo ; cd ~/{wd} && {{ pip install -e . || pip install -r requirements.txt; }} }}")
+
+        return newrem
 
     def sh(self, x, quiet=False, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False):
         if self.ip is None:
@@ -73,19 +76,17 @@ class Remote:
         return self.ip if self.ip is not None else "127.0.0.1"
 
     def _run_utils_cmd(self, cmd, args, kwargs):
-        if self.ip is None:
-            return getattr(_utils, cmd)(*args, **kwargs)
-        else:
-            packed = codecs.encode(pickle.dumps((cmd, args, kwargs)), "base64").decode()
-            self.sh(f"python3 -m pyfra.remote.wrapper {shlex.quote(packed)}")
+        # TODO: tear this stuff out gradually and implement methods natively
+        packed = codecs.encode(pickle.dumps((cmd, args, kwargs)), "base64").decode()
+        self.sh(f"python3 -m pyfra.remote.wrapper {shlex.quote(packed)}")
 
-            tmpname = ".pyfra.result." + str(random.randint(0, 99999))
-            _utils.rsync(self.file(".pyfra.result"), tmpname)
-            ret = _utils.fread(tmpname)
-            _utils.rm(tmpname)
+        tmpname = ".pyfra.result." + str(random.randint(0, 99999))
+        _utils.rsync(self.file(".pyfra.result"), tmpname)
+        ret = _utils.fread(tmpname)
+        _utils.rm(tmpname)
 
-            self.sh("rm .pyfra.result", quiet=True, wrap=False)
-            return pickle.loads(codecs.decode(ret.encode(), "base64"))
+        self.sh("rm .pyfra.result", quiet=True, wrap=False)
+        return pickle.loads(codecs.decode(ret.encode(), "base64"))
 
     @property
     def fingerprint(self):
