@@ -21,6 +21,12 @@ class RemoteFile:
     
     def __repr__(self):
         return f"{self.remote}:{self.fname}" if self.remote.ip is not None else self.fname
+    
+    def to_json(self):
+        return {
+            'remote': self.remote.to_json(),
+            'fname': self.fname,
+        }
 
 
 class Remote:
@@ -89,6 +95,13 @@ class Remote:
         ret = _utils.fread(tmpname)
         _utils.rm(tmpname)
         return ret.strip()
+    
+    def to_json(self):
+        return {
+            'ip': self.ip,
+            'wd': self.wd,
+            'python_version': self.pyenv_version,
+        }
 
     # dummy methods
     def ls(self, *a, **v): pass

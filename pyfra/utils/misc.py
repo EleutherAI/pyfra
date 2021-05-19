@@ -8,26 +8,39 @@ os.makedirs('state', exist_ok=True)
 state = SqliteDict("state/main.db", autocommit=True)
 
 
-def once(fn, name=None):
+class ObjectEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if hasattr(obj, "to_json"):
+            return obj.to_json()
+        
+        return super().default(obj)
+
+
+def once(sentinel=None, *, name=None, version=0):
     """ Only run a function once, saving its return value to disk. Args must be json-encodable. """
 
-    fname = name if name is not None else fn.__name__
+    def wrapper(fn):
+        fname = name if name is not None else fn.__name__
 
-    def _fn(*args, **kwargs):
-        # hash the arguments
-        arghash = hashlib.sha256(json.dumps([args, kwargs], sort_keys=True).encode()).hexdigest()
+        def _fn(*args, **kwargs):
+            # hash the arguments
+            jsonobj = json.dumps([args, kwargs], sort_keys=True, cls=ObjectEncoder)
+            arghash = hashlib.sha256(jsonobj.encode()).hexdigest()
 
-        key = f"once-{fname}-{arghash}-seen"
-        if key in state: return state[key]
-        
-        ret = fn(*args, **kwargs)
-        print("FINISHED", ret, fn.__name__)
-        state[key] = ret
-        state.commit()
-        return ret
+            print("@once:", fname, args, kwargs, arghash, version)
 
-    return _fn
+            key = f"once-{fname}-{arghash}-{version}-seen"
+            if key in state: return state[key]
+            
+            ret = fn(*args, **kwargs)
+            print("FINISHED @once:", fname, args, kwargs, arghash, version)
+            state[key] = ret
+            state.commit()
+            return ret
 
+        return _fn
+
+    return wrapper if sentinel is None else wrapper(sentinel)
 
 
 # DEPRECATED
