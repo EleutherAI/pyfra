@@ -29,9 +29,8 @@ def _wrap_command(x, no_venv=False, pyenv_version=None):
 
 
 def _sh(cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False, pyenv_version=None):
-
-    if wrap: x = _wrap_command(cmd, no_venv=no_venv, pyenv_version=pyenv_version)
-    if wd: x = f"cd {wd}; {cmd}"
+    if wrap: cmd = _wrap_command(cmd, no_venv=no_venv, pyenv_version=pyenv_version)
+    if wd is not None: cmd = f"cd {wd}; {cmd}"
 
     p = subprocess.Popen(cmd, shell=True,
         stdout=subprocess.PIPE,
