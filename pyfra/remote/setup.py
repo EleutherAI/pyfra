@@ -88,8 +88,8 @@ eval "$(pyenv virtualenv-init -)"
     # make sure the versions all check out
     assert r.sh(f"python --version", no_venv=True).strip().split(" ")[-1] == version
     assert r.sh(f"python3 --version", no_venv=True).strip().split(" ")[-1] == version
-    assert version in r.sh("pip --version", no_venv=True)
-    assert version in r.sh("pip3 --version", no_venv=True)
+    assert version.rsplit('.', 1)[0] in r.sh("pip --version", no_venv=True)
+    assert version.rsplit('.', 1)[0] in r.sh("pip3 --version", no_venv=True)
     
     r.sh("pip install virtualenv")
     r.sh("virtualenv --version")
