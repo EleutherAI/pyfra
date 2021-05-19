@@ -91,9 +91,11 @@ def rsh(host, cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, connec
 
     return _sh(f"ssh -q -oConnectTimeout={connection_timeout} -oBatchMode=yes -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -t {host} {shlex.quote(cmd)}", quiet=quiet, wrap=False, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv)
 
-def rsync(frm, to, quiet=False, connection_timeout=10, symlink_ok=True):
+def rsync(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True):
     frm = str(frm)
     to = str(to)
+
+    if not into and frm[-1] != '/': frm += '/'
 
     if quiet:
         opts = "-e \"ssh -o StrictHostKeyChecking=no\" -arq"
@@ -114,15 +116,16 @@ def rsync(frm, to, quiet=False, connection_timeout=10, symlink_ok=True):
 
         if to_host == frm_host:
             if symlink_ok:
-                rsh(frm_host, f"ln -s {symlink_frm(frm_path)} {to_path}")
+                rsh(frm_host, f"[ -d {frm_path} ] && mkdir -p {to_path}; ln -sf {symlink_frm(frm_path)} {to_path}")
             else:
                 rsh(frm_host, f"rsync {opts} {frm_path} {to_path}")
         else:
             rsync_cmd = f"rsync {opts} {frm_path} {to}"
+                
             sh(f"eval \"$(ssh-agent -s)\"; ssh-add ~/.ssh/id_rsa; ssh -q -oConnectTimeout={connection_timeout} -oBatchMode=yes -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -A {frm_host} {rsync_cmd | quote}", wrap=False)
     else:
         if symlink_ok and ":" not in frm and ":" not in to:
-            sh(f"ln -s {symlink_frm(frm)} {to}")
+            sh(f"[ -d {frm} ] && mkdir -p {to}; ln -sf {symlink_frm(frm)} {to}")
         else:
             sh(f"rsync {opts} {frm} {to}", wrap=False)
 
