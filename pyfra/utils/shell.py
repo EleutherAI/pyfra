@@ -16,7 +16,7 @@ from best_download import download_file
 class ShellException(Exception): pass
 
 
-__all__ = ['sh', 'rsh', 'rsync', 'ls', 'rm', 'mv', 'curl', 'wget', 'quote', 'columns']
+__all__ = ['sh', 'rsh', 'rsync', 'ls', 'rm', 'curl', 'wget', 'quote', 'columns']
 
 
 def _wrap_command(x, no_venv=False, pyenv_version=None):
@@ -142,10 +142,6 @@ def rm(x, no_exists_ok=True):
         shutil.rmtree(x)  # remove dir and all contains
     else:
         raise ValueError("file {} is not a file or dir.".format(x))
-
-#DEPRECATED
-# alias shutil function
-mv = shutil.move
 
 def curl(url, max_tries=10, timeout=30): # TODO: add checksum option
     cooldown = 1
