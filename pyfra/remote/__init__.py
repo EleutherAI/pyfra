@@ -8,7 +8,7 @@ import os
 import random
 
 # set up command methods
-methods = ['ls', 'rm', 'curl', 'wget',
+methods = ['ls', 'rm', 'wget',
            'fwrite', 'fread', 'jread', 'jwrite', 'csvread', 'csvwrite']
 
 
@@ -114,7 +114,6 @@ class Remote:
     # dummy methods
     def ls(self, *a, **v): pass
     def rm(self, *a, **v): pass
-    def curl(self, *a, **v): pass
     def wget(self, *a, **v): pass
 
     def fwrite(self, *a, **v): pass
@@ -149,7 +148,6 @@ class MultiRemote:
     # dummy methods
     def ls(self, *a, **v): pass
     def rm(self, *a, **v): pass
-    def curl(self, *a, **v): pass
     def wget(self, *a, **v): pass
 
     def fwrite(self, *a, **v): pass
