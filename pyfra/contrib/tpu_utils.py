@@ -1,8 +1,58 @@
+# if you're using this file as an example of pyfra code, please do note that this is using fairly low level pyfra constructs
+
 from pyfra import *
 import time
 import json
 from parse import parse
 import os
+
+
+@once
+def split_data(rem, input, shuffle=False):
+    rsync(input, rem.file("split_inp"), into=False)
+    if shuffle:
+        rem.sh(f"""
+        pip install lm_dataformat
+        rm -rf output_split
+        wget -c https://gist.githubusercontent.com/leogao2/a81146bd01d7f1e4a65aca347047d3f9/raw/421de00fb5d3586c06be3f5660dfa2978846a2b2/split_lmd_shuffle.py
+
+        python split_lmd_shuffle.py split_inp
+        """)
+    else:
+        rem.sh(f"""
+        pip install lm_dataformat
+        rm -rf output_split
+        wget -c https://gist.githubusercontent.com/leogao2/a81146bd01d7f1e4a65aca347047d3f9/raw/fe667a416f7c5860b610a90f824c72b2ff5c66c9/split_lmd.py
+        python split_lmd.py split_inp
+        """)
+
+    return rem.file("output_split")
+
+@once(version=1)
+def tokenize(rem_tok, rem_gcp, input, dataset_name, dataset_bucket):
+    if isinstance(dataset_bucket, str): dataset_bucket = [dataset_bucket]
+    for bucket in dataset_bucket: rem_gcp.sh(f"gsutil -m rm -r {trim_slash(bucket)}/{dataset_name}", ignore_errors=True)
+
+    env = rem_tok.env("tokenization_pyfra", "https://github.com/EleutherAI/gpt-neo")
+    rsync(input, env.file(f"inpdata"), into=False)
+
+    env.sh("rm inpdata/current_chunk_incomplete", ignore_errors=True)
+
+    cores = env.sh("nproc").split("\n")[-1].strip() >> do(int)
+    procs = min(cores, len(env.ls("inpdata")))
+
+    print(f"Using {procs} of {cores} cores")
+
+    env.sh(f"""
+    cd data
+    [ -d {dataset_name}_tfrecords ] || TOKENIZERS_PARALLELISM=false python3 create_tfrecords.py --input_dir ../inpdata --name {dataset_name} --output_dir {dataset_name}_tfrecords --processes {procs}
+    """)
+
+    rem_gcp.sh(f"rm -rf {dataset_name}_tfrecords; mkdir {dataset_name}_tfrecords", ignore_errors=True)
+    rsync(env.file(f"data/{dataset_name}_tfrecords/"), rem_gcp.file(f"{dataset_name}_tfrecords"))
+    for bucket in dataset_bucket: rem_gcp.sh(f"gsutil -m cp -r {dataset_name}_tfrecords {trim_slash(bucket)}/{dataset_name}")
+    rem_gcp.rm(f"{dataset_name}_tfrecords")
+
 
 def make_tpu(rem, tpu_name, zone="europe-west4-a", project="youdreamof-1543654322305", tf_version="2.4.0", accelerator_type="v3", size=256):
     rem.sh("pu --help || pip3 install tpunicorn")
@@ -36,10 +86,10 @@ def make_tpu(rem, tpu_name, zone="europe-west4-a", project="youdreamof-154365432
         print("live tpus:", live_tpus)
 
 
-def config_for(experiment_name, model_size, tpu_size, custom_config, models_bucket):
+def config_for(experiment_name, model_size, tpu_size, custom_config, model_bucket):
     conf = curl("https://gist.githubusercontent.com/leogao2/a5b53c1ef45e9be167cc7ccbfca7cabc/raw/c4ed65951fa3c941672ee4fd40f8c875aeebd487/run_config_1.3B.json") \
         >> do(json.loads)
-    conf['model_path'] = f"{models_bucket}/{experiment_name}"
+    conf['model_path'] = model_bucket
     conf['datasets'][0][0] = f"{experiment_name}_data"
 
     if model_size == '125M':
@@ -115,26 +165,27 @@ def trim_slash(x):
     return x
 
 
-def train_model(rem, experiment_name, dataset_bucket, tpu_config={}, model_size="1.3B", models_bucket="gs://neo-models", val_data="gs://neo-d/atasets/pile_val.tfrecords", resume_from=None, config_override={}): 
-    dataset_bucket, models_bucket, resume_from = map(trim_slash, [dataset_bucket, models_bucket, resume_from])
+@once
+def train_model(rem, experiment_name, dataset_bucket, model_bucket, tpu_config={}, model_size="1.3B", val_data="gs://neo-d/atasets/pile_val.tfrecords", resume_from=None, config_override={}, tpu_name=None, steps_per_checkpoint=1000): 
+    dataset_bucket, model_bucket, resume_from = map(trim_slash, [dataset_bucket, model_bucket, resume_from])
     
-    rem.sh(f"cd ~; git clone https://github.com/leogao2/gpt-neo/ ~/neo_{experiment_name} || cd ~/neo_{experiment_name} && git pull", ignore_errors=True)
-    rem = rem.cd(f"~/neo_{experiment_name}")
-    rem.sh("pip3 install -r requirements.txt")
+    rem = rem.env(f"neo_{experiment_name}", "https://github.com/leogao2/gpt-neo/")
 
-    tpu_name = "neo_" + experiment_name
+    if tpu_name is None:
+        tpu_name = "neo_" + experiment_name
     tpu_size = tpu_config.get("size", 256)
 
     data_conf = curl("https://gist.githubusercontent.com/leogao2/a5b53c1ef45e9be167cc7ccbfca7cabc/raw/031b6bb9853d79ec2192a3648022185e3ce2e65d/dataset_config.json") \
         >> do(json.loads)
     data_conf["path"] = f"{dataset_bucket}/*.tfrecords"
     data_conf["eval_path"] = val_data
-    rem.jwrite(f"configs/{experiment_name}.json", config_for(experiment_name, model_size, tpu_size, config_override, models_bucket))
+    config_json = config_for(experiment_name, model_size, tpu_size, config_override, model_bucket)
+    rem.jwrite(f"configs/{experiment_name}.json", config_json)
     rem.jwrite(f"configs/dataset_configs/{experiment_name}_data.json", data_conf)
     # if resuming, copy from old dir
     if resume_from is not None:
         try:
-            train_index = latest_model_index(rem, f"{models_bucket}/{experiment_name}")
+            train_index = latest_model_index(rem, model_bucket)
         except IndexError:
             train_index = 0
         if train_index == 0:
@@ -143,7 +194,7 @@ def train_model(rem, experiment_name, dataset_bucket, tpu_config={}, model_size=
 
             original = rem.sh(f"gsutil ls {resume_from}/*{resume_index}*").strip().split("\n") >> filt(lambda x: x.startswith("gs://")) >> do(listify)
             target = original \
-                >> each(lambda x: f"{models_bucket}/{experiment_name}/" + (x.replace(f"ckpt-{resume_index}", "ckpt-0") if reset_index else x).split("/")[-1]) >> do(listify)
+                >> each(lambda x: f"{model_bucket}/" + (x.replace(f"ckpt-{resume_index}", "ckpt-0") if reset_index else x).split("/")[-1]) >> do(listify)
             cmd = " & ".join(
                 zip(original, target) >> each(lambda x: f"gsutil cp {x[0]} {x[1]}")
             ) + " & wait"
@@ -153,19 +204,23 @@ def train_model(rem, experiment_name, dataset_bucket, tpu_config={}, model_size=
             if reset_index:
                 ckpt_file = 'model_checkpoint_path: "model.ckpt-0"\nall_model_checkpoint_paths: "model.ckpt-0"'
                 # write checkpoint file
-                rem.sh(f"echo {ckpt_file | quote} > checkpoint; gsutil cp checkpoint {models_bucket}/{experiment_name}/; rm checkpoint")
+                rem.sh(f"echo {ckpt_file | quote} > checkpoint; gsutil cp checkpoint {model_bucket}/; rm checkpoint")
             else:
-                rem.sh(f"gsutil cp {resume_from}/checkpoint {models_bucket}/{experiment_name}/")
+                rem.sh(f"gsutil cp {resume_from}/checkpoint {model_bucket}/")
 
     make_tpu(rem, tpu_name, **tpu_config)
 
-    rem.sh(f"python3 run_experiment.py --experiment_name {experiment_name} --tpu {tpu_name} --model {experiment_name} --json_save eval_{experiment_name}.jsonl --steps_per_checkpoint 1000 --opt_init_step")
+    rem.sh(f"python3 run_experiment.py --experiment_name {experiment_name} --tpu {tpu_name} --model {experiment_name} --json_save eval_{experiment_name}.jsonl --steps_per_checkpoint {steps_per_checkpoint} --opt_init_step --initial_heartbeat_timeout 28800")
 
     rsync(rem.file(f'eval_{experiment_name}.jsonl'), '.')
+    return config_json
 
 
 def latest_model_index(rem, model_path):
-    files = rem.sh(f"gsutil ls {model_path}")
+    files = rem.sh(f"gsutil ls {model_path}", ignore_errors=True)
+
+    if 'CommandException: One or more URLs matched no objects.' in files:
+        return 0
 
     latest = [
         parse(model_path + "/model.ckpt-{}.meta", f)
@@ -185,6 +240,13 @@ def slugify(x):
 
 
 def convert_neo_to_hf(rem_gcp, rem_hf, model_path, hf_url, config):
+    latest = latest_model_index(rem_gcp, model_path)
+
+    return convert_neo_to_hf_for_index(rem_gcp, rem_hf, model_path, latest, hf_url, config)
+
+
+@once
+def convert_neo_to_hf_for_index(rem_gcp, rem_hf, model_path, latest, hf_url, config):
     assert 'HF_USER' in os.environ and 'HF_PWD' in os.environ
 
     rem_hf.fwrite("hf_login", f"""
@@ -203,10 +265,7 @@ def convert_neo_to_hf(rem_gcp, rem_hf, model_path, hf_url, config):
     transformers-cli repo ls-files || exit 1
     """)
 
-    latest = latest_model_index(rem_gcp, 
-    model_path)
-
-    rem_gcp = rem_gcp.cd(slugify(hf_url))
+    rem_gcp = rem_gcp.env(slugify(hf_url))
     rem_gcp.sh(f"""
     # rm -rf ~/.cache/huggingface/
     
@@ -229,7 +288,7 @@ def convert_neo_to_hf(rem_gcp, rem_hf, model_path, hf_url, config):
     rem_hf.sh(f"mkdir -p converted/")
     rsync(rem_gcp.file(f"output/"), rem_hf.file(f"converted/{slugify(hf_url)}_tmp/"))
     
-    rem_gcp.cd().rm(slugify(hf_url))
+    rem_gcp.env().rm(slugify(hf_url))
 
     org, repo = hf_url.split("/")
     rem_hf.sh(f"""
