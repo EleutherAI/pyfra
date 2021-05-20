@@ -53,7 +53,7 @@ class Remote:
             return Remote(self.ip, None, self.pyenv_version)
 
         if wd[-1] == '/': wd = wd[:-1]
-        wd = os.path.join(self.wd, os.path.expanduser(wd)) if self.wd is not None else wd
+        wd = os.path.join(self.wd, wd).split('~')[-1] if self.wd is not None else wd
 
         newrem = Remote(self.ip, wd, self.pyenv_version)
 
@@ -70,7 +70,7 @@ class Remote:
             return _utils.rsh(self.ip, x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=self.pyenv_version)
     
     def file(self, fname):
-        return RemoteFile(self, os.path.join(self.wd, os.path.expanduser(fname)) if self.wd else fname)
+        return RemoteFile(self, os.path.join(self.wd, fname).split('~')[-1] if self.wd else fname)
 
     def __repr__(self):
         return self.ip if self.ip is not None else "127.0.0.1"
