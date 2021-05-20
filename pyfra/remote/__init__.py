@@ -124,39 +124,6 @@ class Remote:
     def csvwrite(self, *a, **v): pass
 
 
-class MultiRemote:
-    def __init__(self, ips=None):
-        self.remotes = [Remote(ip) for ip in ips]
-
-    def sh(self, x, quiet=False):
-        # TODO: run in parallel
-        return [
-            remote.sh(x, quiet=quiet)
-            for remote in self.remotes
-        ]
-    
-    def file(self, fname):
-        return [RemoteFile(rem, fname) for rem in self.remotes]
-
-    def _run_utils_cmd(self, cmd, args, kwargs):
-        # TODO: run in parallel
-        return [
-            remote._run_utils_cmd(cmd, args, kwargs)
-            for remote in self.remotes
-        ]
-
-    # dummy methods
-    def ls(self, *a, **v): pass
-    def rm(self, *a, **v): pass
-    def wget(self, *a, **v): pass
-
-    def fwrite(self, *a, **v): pass
-    def fread(self, *a, **v): pass
-    def jread(self, *a, **v): pass
-    def jwrite(self, *a, **v): pass
-    def csvread(self, *a, **v): pass
-    def csvwrite(self, *a, **v): pass
-
 def command_method(cls, name):
     def _cmd(self, *args, **kwargs):
         return self._run_utils_cmd(name, args, kwargs)
@@ -166,4 +133,3 @@ def command_method(cls, name):
 
 for method in methods:
     command_method(Remote, method)
-    command_method(MultiRemote, method)
