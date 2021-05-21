@@ -265,8 +265,8 @@ def convert_neo_to_hf_for_index(rem_gcp, rem_hf, model_path, latest, hf_url, con
     transformers-cli repo ls-files || exit 1
     """)
 
-    rem_gcp = rem_gcp.env(slugify(hf_url))
-    rem_gcp.sh(f"""
+    env_gcp = rem_gcp.env(slugify(hf_url))
+    env_gcp.sh(f"""
     # rm -rf ~/.cache/huggingface/
     
     # copying model files
@@ -275,9 +275,9 @@ def convert_neo_to_hf_for_index(rem_gcp, rem_hf, model_path, latest, hf_url, con
     gsutil cp {model_path}/checkpoint model/
     """).split('\n')
 
-    rem_gcp.jwrite(f"config.json", config)
+    env_gcp.jwrite(f"config.json", config)
 
-    rem_gcp.sh(f"""
+    env_gcp.sh(f"""
     pip install git+https://github.com/leogao2/transformers@patch-3 torch tensorflow
     wget -c https://raw.githubusercontent.com/huggingface/transformers/master/src/transformers/models/gpt_neo/convert_gpt_neo_mesh_tf_to_pytorch.py
     
@@ -286,9 +286,9 @@ def convert_neo_to_hf_for_index(rem_gcp, rem_hf, model_path, latest, hf_url, con
     """)
 
     rem_hf.sh(f"mkdir -p converted/")
-    rsync(rem_gcp.file(f"output/"), rem_hf.file(f"converted/{slugify(hf_url)}_tmp/"))
-    
-    rem_gcp.env().rm(slugify(hf_url))
+    rsync(env_gcp.file(f"output/"), rem_hf.file(f"converted/{slugify(hf_url)}_tmp/"), symlink_ok=False)
+
+    rem_gcp.rm(slugify(hf_url))
 
     org, repo = hf_url.split("/")
     rem_hf.sh(f"""
