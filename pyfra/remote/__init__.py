@@ -16,6 +16,9 @@ def normalize_homedir(x):
     if '~' in x:
         return x.split('~/')[-1]
     
+    if x[0] != '/' and x[:2] != '~/':
+        x = '~/' + x
+    
     return x
 
 
@@ -39,7 +42,7 @@ class RemoteFile:
 class Remote:
     def __init__(self, ip=None, wd=None, python_version="3.9.4"):
         self.ip = ip
-        self.wd = wd
+        self.wd = normalize_homedir(wd) if wd is not None else None
         self.pyenv_version = python_version
 
         # set up remote
@@ -47,7 +50,8 @@ class Remote:
             install_pyenv(self, python_version)
 
         if wd is not None:
-            self.sh(f"mkdir -p {wd | _utils.quote}; cd {wd | _utils.quote}; [ -d env/lib/python{python_version.rsplit('.')[0]} ] || rm -rf env ; pyenv shell {python_version} ; [ -f env/bin/activate ] || virtualenv env", no_venv=True)
+            pyenv_cmds = f"[ -d env/lib/python{python_version.rsplit('.')[0]} ] || rm -rf env ; pyenv shell {python_version} ;" if python_version is not None else ""
+            self.sh(f"mkdir -p {wd | _utils.quote}; cd {wd | _utils.quote}; {pyenv_cmds} [ -f env/bin/activate ] || virtualenv env", no_venv=True)
 
         self.sh("pip install -U git+https://github.com/EleutherAI/pyfra/")
 
@@ -66,7 +70,8 @@ class Remote:
 
         if git is not None:
             # TODO: make this usable
-            newrem.sh(f"{{ rm -rf .tmp_git_repo ; git clone {git} .tmp_git_repo ; rsync -ar .tmp_git_repo/ ~/{wd}/ ; rm -rf .tmp_git_repo ; cd ~/{wd} && {{ pip install -e . || pip install -r requirements.txt; }} }}")
+            nonce = str(random.randint(0, 99999))
+            newrem.sh(f"{{ rm -rf .tmp_git_repo ; git clone {git} .tmp_git_repo.{nonce} ; rsync -ar .tmp_git_repo.{nonce}/ ~/{wd}/ ; rm -rf .tmp_git_repo.{nonce} ; cd ~/{wd} && {{ pip install -e . || pip install -r requirements.txt; }} }}")
 
         return newrem
 
@@ -89,7 +94,7 @@ class Remote:
 
         tmpname = ".pyfra.result." + str(random.randint(0, 99999))
         _utils.rsync(self.file(".pyfra.result"), tmpname)
-        ret = _utils.fread(tmpname)
+        ret = _utils.fread(normalize_homedir(tmpname))
         _utils.rm(tmpname)
 
         self.sh("rm .pyfra.result", quiet=True, wrap=False)
