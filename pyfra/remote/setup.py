@@ -61,11 +61,15 @@ def install_pyenv(r, version="3.9.4"):
         'build-essential',
         'libbz2-dev',
         'libffi-dev',
+        'liblzma-dev',
+        'libncurses5-dev',
+        'libncursesw5-dev',
         'libreadline-dev',
         'libsqlite3-dev',
         'libssl-dev',
         'make',
         'python3-openssl',
+        'xz-utils',
         'zlib1g-dev',
     ])
     r.sh("curl https://pyenv.run | bash", ignore_errors=True)
