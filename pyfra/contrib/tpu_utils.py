@@ -311,3 +311,144 @@ def convert_neo_to_hf_for_index(rem_gcp, rem_hf, model_path, latest, hf_url, con
     git push origin main
     rm -rf ../{slugify(hf_url)}_tmp
     """)
+
+
+def run_eval_harness(rem, tasks, model_name, batch_size=1, gpu_id=0, k=0):
+    if model_name in ["ada", "babbage", "curie", "davinci", "curie-instruct-beta", "davinci-instruct-beta"]:
+        model = "gpt3"
+    else:
+        model = "gpt2"
+
+    tasks = ",".join(tasks)
+
+    env = rem.env("eval_harness", "https://github.com/EleutherAI/lm-evaluation-harness/")
+    env.sh("""
+    pip3 install -U transformers sacrebleu
+    """)
+
+    env.sh(f"CUDA_VISIBLE_DEVICES={gpu_id} python3 main.py --model {model} --model_args pretrained={model_name} --tasks {tasks} --output_path eval_{slugify(model_name)}.json --batch_size {batch_size}" + (f" --num_fewshot {k}" if k != 0 else ""))
+
+    return env.file(f"eval_{slugify(model_name)}.json")
+
+
+TASKS_LLONLY_SMALL = [
+    "lambada",
+    "piqa",
+    "hellaswag",
+    "winogrande",
+    "mathqa",
+    "pubmedqa",
+    "boolq",
+    "anli_r3",
+    "openbookqa",
+    "sciq",
+    "cb",
+    "copa",
+    "multirc",
+]
+
+TASKS_HASTRAIN = [
+    'anli_r1',
+    'anli_r2',
+    'anli_r3',
+    'arc_challenge',
+    'arc_easy',
+    'boolq',
+    'cb',
+    'cola',
+    'copa',
+    'coqa',
+    'drop',
+    'ethics_cm',
+    'ethics_deontology',
+    'ethics_justice',
+    'ethics_utilitarianism',
+    'ethics_virtue',
+    'headqa',
+    'hellaswag',
+    'hendrycksTest-abstract_algebra',
+    'hendrycksTest-anatomy',
+    'hendrycksTest-astronomy',
+    'hendrycksTest-business_ethics',
+    'hendrycksTest-clinical_knowledge',
+    'hendrycksTest-college_biology',
+    'hendrycksTest-college_chemistry',
+    'hendrycksTest-college_computer_science',
+    'hendrycksTest-college_mathematics',
+    'hendrycksTest-college_medicine',
+    'hendrycksTest-college_physics',
+    'hendrycksTest-computer_security',
+    'hendrycksTest-conceptual_physics',
+    'hendrycksTest-econometrics',
+    'hendrycksTest-electrical_engineering',
+    'hendrycksTest-elementary_mathematics',
+    'hendrycksTest-formal_logic',
+    'hendrycksTest-global_facts',
+    'hendrycksTest-high_school_biology',
+    'hendrycksTest-high_school_chemistry',
+    'hendrycksTest-high_school_computer_science',
+    'hendrycksTest-high_school_european_history',
+    'hendrycksTest-high_school_geography',
+    'hendrycksTest-high_school_government_and_politics',
+    'hendrycksTest-high_school_macroeconomics',
+    'hendrycksTest-high_school_mathematics',
+    'hendrycksTest-high_school_microeconomics',
+    'hendrycksTest-high_school_physics',
+    'hendrycksTest-high_school_psychology',
+    'hendrycksTest-high_school_statistics',
+    'hendrycksTest-high_school_us_history',
+    'hendrycksTest-high_school_world_history',
+    'hendrycksTest-human_aging',
+    'hendrycksTest-human_sexuality',
+    'hendrycksTest-international_law',
+    'hendrycksTest-jurisprudence',
+    'hendrycksTest-logical_fallacies',
+    'hendrycksTest-machine_learning',
+    'hendrycksTest-management',
+    'hendrycksTest-marketing',
+    'hendrycksTest-medical_genetics',
+    'hendrycksTest-miscellaneous',
+    'hendrycksTest-moral_disputes',
+    'hendrycksTest-moral_scenarios',
+    'hendrycksTest-nutrition',
+    'hendrycksTest-philosophy',
+    'hendrycksTest-prehistory',
+    'hendrycksTest-professional_accounting',
+    'hendrycksTest-professional_law',
+    'hendrycksTest-professional_medicine',
+    'hendrycksTest-professional_psychology',
+    'hendrycksTest-public_relations',
+    'hendrycksTest-security_studies',
+    'hendrycksTest-sociology',
+    'hendrycksTest-us_foreign_policy',
+    'hendrycksTest-virology',
+    'hendrycksTest-world_religions',
+    'logiqa',
+    'math_algebra',
+    'math_counting_and_prob',
+    'math_geometry',
+    'math_intermediate_algebra',
+    'math_num_theory',
+    'math_prealgebra',
+    'math_precalc',
+    'mathqa',
+    'mnli',
+    'mnli_mismatched',
+    'mrpc',
+    'multirc',
+    'openbookqa',
+    'piqa',
+    'qnli',
+    'qqp',
+    'race',
+    'record',
+    'rte',
+    'sciq',
+    'squad2',
+    'sst',
+    'webqs',
+    'wic',
+    'winogrande',
+    'wnli',
+    'wsc',
+]
