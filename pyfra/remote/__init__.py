@@ -13,11 +13,18 @@ methods = ['ls', 'rm', 'wget',
 
 
 def normalize_homedir(x):
+    # some special cases
+    if x == '': return '~'
+    if x == '.': return '~'
+    if x == '/': return '/'
+
     if '~' in x:
         return x.split('~/')[-1]
     
     if x[0] != '/' and x[:2] != '~/':
         x = '~/' + x
+    
+    if x[-1] == '/' and len(x) > 1: x = x[:-1]
     
     return x
 
@@ -34,7 +41,7 @@ class RemoteFile:
     
     def to_json(self):
         return {
-            'remote': self.remote.to_json(),
+            'remote': self.remote.ip,
             'fname': self.fname,
         }
 
@@ -42,32 +49,30 @@ class RemoteFile:
 class Remote:
     def __init__(self, ip=None, wd=None, python_version="3.9.4"):
         self.ip = ip
-        self.wd = normalize_homedir(wd) if wd is not None else None
+        self.wd = self.file(wd).fname
         self.pyenv_version = python_version
-
-        # set up remote
-        if python_version is not None:
-            install_pyenv(self, python_version)
-
-        if wd is not None:
-            pyenv_cmds = f"[ -d env/lib/python{python_version.rsplit('.')[0]} ] || rm -rf env ; pyenv shell {python_version} ;" if python_version is not None else ""
-            self.sh(f"mkdir -p {wd | _utils.quote}; cd {wd | _utils.quote}; {pyenv_cmds} [ -f env/bin/activate ] || virtualenv env", no_venv=True)
 
         self.sh("pip install -U git+https://github.com/EleutherAI/pyfra/")
 
-    # DEPRECATED
-    def cd(self, wd=None, git=None):
-        return self.env(wd, git)
-
-    def env(self, wd=None, git=None):
+    def env(self, wd=None, git=None, python_version=None):
         if wd is None:
             return Remote(self.ip, None, self.pyenv_version)
 
         if wd[-1] == '/': wd = wd[:-1]
-        wd = normalize_homedir(os.path.join(self.wd, wd)) if self.wd is not None else wd
+        wd = self.file(wd).fname
 
-        newrem = Remote(self.ip, wd, self.pyenv_version)
+        newrem = Remote(self.ip, wd, self.pyenv_version if python_version is None else python_version)
 
+        # set up remote python version
+        if python_version is not None:
+            install_pyenv(self, python_version)
+
+        # install venv
+        if wd is not None:
+            pyenv_cmds = f"[ -d env/lib/python{python_version.rsplit('.')[0]} ] || rm -rf env ; pyenv shell {python_version} ;" if python_version is not None else ""
+            self.sh(f"mkdir -p {wd | _utils.quote}; cd {wd | _utils.quote}; {pyenv_cmds} [ -f env/bin/activate ] || virtualenv env", no_venv=True)
+
+        # pull git
         if git is not None:
             # TODO: make this usable
             nonce = str(random.randint(0, 99999))
@@ -82,7 +87,7 @@ class Remote:
             return _utils.rsh(self.ip, x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=self.pyenv_version)
     
     def file(self, fname):
-        return RemoteFile(self, normalize_homedir(os.path.join(self.wd, fname)) if self.wd else fname)
+        return RemoteFile(self, normalize_homedir(os.path.join(self.wd, fname) if self.wd else fname))
 
     def __repr__(self):
         return self.ip if self.ip is not None else "127.0.0.1"
@@ -92,9 +97,9 @@ class Remote:
         packed = codecs.encode(pickle.dumps((cmd, args, kwargs)), "base64").decode()
         self.sh(f"python3 -m pyfra.remote.wrapper {shlex.quote(packed)}")
 
-        tmpname = ".pyfra.result." + str(random.randint(0, 99999))
+        tmpname = normalize_homedir(".pyfra.result." + str(random.randint(0, 99999)))
         _utils.rsync(self.file(".pyfra.result"), tmpname)
-        ret = _utils.fread(normalize_homedir(tmpname))
+        ret = _utils.fread(tmpname)
         _utils.rm(tmpname)
 
         self.sh("rm .pyfra.result", quiet=True, wrap=False)
