@@ -3,36 +3,9 @@ from pyfra.utils.shell import *
 from functools import wraps, partial
 
 
-# DEPRECATED
-def install(x=[]):
-    deps = x
-    if callable(deps):
-        deps = []
-
-    def _decorator(f):
-        @wraps(f)
-        def _f(rem):
-            print(">>> Installing dependencies for", f.__name__)
-            for dep in [ensure_supported] + deps:
-                dep(rem)
-        
-            print()
-            print(">>>")
-            print(">>> Installing", f.__name__)
-            print(">>>")
-            print()
-
-            return once(partial(f, rem), name=f.__name__ + ";" + rem.fingerprint)()
-        
-        return _f
-    
-    if callable(x):
-        return _decorator(x)
-    return _decorator
-
-
 def apt(r, packages):
-    r.sh(f"sudo apt-get install -y {' '.join(packages)}")
+    # install sudo if it's not installed; this is the case in some docker containers
+    r.sh(f"sudo echo hi || {{ apt-get update; apt-get install sudo; }}; sudo apt-get update; sudo apt-get install -y {' '.join(packages)}")
 
 
 def ensure_supported(r):
@@ -59,6 +32,8 @@ def install_pyenv(r, version="3.9.4"):
 
     apt(r, [
         'build-essential',
+        'curl',
+        'git',
         'libbz2-dev',
         'libffi-dev',
         'liblzma-dev',
@@ -69,6 +44,9 @@ def install_pyenv(r, version="3.9.4"):
         'libssl-dev',
         'make',
         'python3-openssl',
+        'rsync',
+        'tk-dev',
+        'wget',
         'xz-utils',
         'zlib1g-dev',
     ])
@@ -86,6 +64,10 @@ eval "$(pyenv virtualenv-init -)"
 
     if "# pyfra-managed: pyenv stuff" not in bashrc:
         r.sh(f"echo {payload | quote} >> ~/.bashrc")
+
+    # install updater
+    r.sh("git clone https://github.com/pyenv/pyenv-update.git $(pyenv root)/plugins/pyenv-update", ignore_errors=True)
+    r.sh("pyenv update", ignore_errors=True)
 
     r.sh(f"pyenv install --verbose -s {version}")
 

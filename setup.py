@@ -36,5 +36,6 @@ setuptools.setup(
         'sqlitedict',
         'colorama',
         'parse',
+        'natsort',
     ]
 )

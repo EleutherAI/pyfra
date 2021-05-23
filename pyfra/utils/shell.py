@@ -8,6 +8,7 @@ import shlex
 import errno
 import re
 from colorama import Fore, Style
+from natsort import natsorted
 
 
 from best_download import download_file
@@ -23,7 +24,7 @@ def _wrap_command(x, no_venv=False, pyenv_version=None):
     bashrc_payload = r"""import sys,re; print(re.sub("If not running interactively.{,128}?esac", "", sys.stdin.read(), flags=re.DOTALL).replace('[ -z "$PS1" ] && return', ''))"""
     hdr = f"ctrlc() {{ echo Shell wrapper interrupted with C-c, raising error; exit 174; }}; trap ctrlc SIGINT; "
     hdr += f"eval \"$(cat ~/.bashrc | python3 -c {bashrc_payload | quote})\"  > /dev/null 2>&1; "
-    if pyenv_version is not None: hdr += f"pyenv shell {pyenv_version} ; "
+    if pyenv_version is not None: hdr += f"pyenv shell {pyenv_version}  > /dev/null 2>&1; "
     if not no_venv: hdr += "[ -f env/bin/activate ] && . env/bin/activate; "
     return hdr + x
 
@@ -62,8 +63,10 @@ def _sh(cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, ignore_error
     return ret.decode("utf-8").replace("\r\n", "\n").strip()
 
 
-def sh(cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False, pyenv_version=None):
-    return rsh("127.0.0.1", cmd, quiet, wd, wrap, maxbuflen, ignore_errors, no_venv, pyenv_version)
+def sh(cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, connection_timeout=10, ignore_errors=False, no_venv=False, pyenv_version=None):
+    if wd is None: wd = os.getcwd()
+
+    return rsh("127.0.0.1", cmd, quiet, wd, wrap, maxbuflen, connection_timeout, ignore_errors, no_venv, pyenv_version)
 
 
 def rsh(host, cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, connection_timeout=10, ignore_errors=False, no_venv=False, pyenv_version=None):
@@ -78,7 +81,7 @@ def rsh(host, cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, connec
         hoststr = str(host)
         if wd is not None: 
             wd_display = wd
-            if not wd.startswith("~/"):
+            if not wd.startswith("~/") and wd != '~':
                 wd_display = os.path.join("~", wd)
         else:
             wd_display = "~"
@@ -109,7 +112,7 @@ def rsync(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=Tru
         # rsync behavior is to copy the contents of frm into to if frm ends with a /
         if frm[-1] == '/': frm += '*'
         # ln -s can't handle relative paths well! make absolute if not already
-        if frm[0] != '/': frm = "$PWD/" + frm
+        if frm[0] != '/' and frm[0] != '~': frm = "$PWD/" + frm
 
         return frm
 
@@ -133,7 +136,7 @@ def rsync(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=Tru
             sh(f"rsync {opts} {frm} {to}", wrap=False)
 
 def ls(x='.'):
-    return [x + '/' + fn for fn in os.listdir(x)]
+    return list(natsorted([x + '/' + fn for fn in os.listdir(x)]))
 
 def rm(x, no_exists_ok=True):
     # from https://stackoverflow.com/a/41789397
