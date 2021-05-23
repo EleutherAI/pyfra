@@ -101,7 +101,8 @@ def rsync(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=Tru
     frm = str(frm)
     to = str(to)
 
-    if not into and frm[-1] != '/': frm += '/'
+    if frm[-1] == '/' and len(frm) > 1: frm = frm[:-1]
+    if not into: frm += '/'
 
     if quiet:
         opts = "-e \"ssh -o StrictHostKeyChecking=no\" -arq"

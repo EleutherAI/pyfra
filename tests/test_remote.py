@@ -61,11 +61,19 @@ def test_workdir_semantics():
 
     def rsync_path_test(a, b):
         payload = random.randint(0, 99999)
-        a.sh(f"echo hello world {payload} > test_pyfra.txt")
-        rsync(a.file("test_pyfra.txt"), b.file("test2_pyfra.txt"))
+        a.sh(f"mkdir origin_test_dir; echo hello world {payload} > origin_test_dir/test_pyfra.txt", ignore_errors=True)
+        b.sh("mkdir test_dir_1", ignore_errors=True)
+        b.sh("mkdir test_dir_2", ignore_errors=True)
+
+        # check right into=False behavior
+        rsync(a.file("origin_test_dir/test_pyfra.txt"), b.file("test2_pyfra.txt"))
+        rsync(a.file("origin_test_dir"), b.file("test_dir_1"))
+        rsync(a.file("origin_test_dir"), b.file("test_dir_2"), into=False)
         assert b.sh("cat test2_pyfra.txt") == f"hello world {payload}"
-        a.sh("rm test_pyfra.txt")
-        b.sh("rm test2_pyfra.txt")
+        assert b.sh("cat test_dir_1/origin_test_dir/test_pyfra.txt") == f"hello world {payload}"
+        assert b.sh("cat test_dir_2/test_pyfra.txt") == f"hello world {payload}"
+        a.sh("rm -rf origin_test_dir")
+        b.sh("rm -rf test2_pyfra.txt test_dir_1 test_dir_2")
 
     ## env to env
     rsync_path_test(env1, env2)
