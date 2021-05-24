@@ -32,13 +32,13 @@ nas = Remote("user@example2.com")
 def run_experiment(server: str, config_file: str, some_numerical_value: int, some_checkbox: bool):
     r = loc if server == 'local' else rem
 
-    r.sh("git clone https://github.com/EleutherAI/gpt-neox")
+    env = r.env("neox", "git clone https://github.com/EleutherAI/gpt-neox")
     
     # rsync as a function can do local-local, local-remote, and remote-remote
-    rsync(config_file, r.file("gpt-neox/configs/my-config.yml"))
-    rsync(nas.file('some_data_file'), r.file('gpt-neox/data/whatever'))
+    rsync(config_file, env.file("configs/my-config.yml"))
+    rsync(nas.file('some_data_file'), env.file('data/whatever'))
     
-    return r.sh('cd gpt-neox; python3 main.py')
+    return env.sh('python main.py')
 
 @page("Write example file and copy")
 def example():
@@ -55,7 +55,7 @@ def example():
     # fread, fwrite, etc can take a `rem.file` instead of a string filename.
     # you can also use all *read and *write functions directly on the remote too.
     assert fread('test1.txt') == fread(rem.file('testing123.txt'))
-    assert fread('test1.txt') == rem.fread('testing123.txt')
+    assert fread('test1.txt') == rem.file('testing123.txt').read()
 
     # ls as a function returns a list of files (with absolute paths) on the selected remote.
     # the returned value is displayed on the webpage.
