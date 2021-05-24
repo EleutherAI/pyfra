@@ -223,9 +223,9 @@ def latest_model_index(rem, model_path):
         return 0
 
     latest = [
-        parse(model_path + "/model.ckpt-{}.meta", f)
+        parse(trim_slash(model_path) + "/model.ckpt-{}.meta", f)
         for f in files.split('\n')
-    ] >> filt(identity) >> each(lambda x: x[0], int) >> do(sorted, list, lambda x: x[-1])
+    ] >> filt(identity) >> each(lambda x: x[0], int) >> do(sorted, list, ic, lambda x: x[-1])
 
     print("Latest checkpoint:", latest)
 
