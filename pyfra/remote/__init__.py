@@ -154,7 +154,7 @@ class Remote:
         if git is not None:
             # TODO: make this usable
             nonce = str(random.randint(0, 99999))
-            newrem.sh(f"{{ rm -rf .tmp_git_repo ; git clone {git} .tmp_git_repo.{nonce} ; rsync -ar .tmp_git_repo.{nonce}/ {wd}/ ; rm -rf .tmp_git_repo.{nonce} ; cd {wd} && {{ pip install -e . || pip install -r requirements.txt; }} }}")
+            newrem.sh(f"{{ rm -rf .tmp_git_repo ; git clone {git} .tmp_git_repo.{nonce} ; rsync -ar .tmp_git_repo.{nonce}/ {wd}/ ; rm -rf .tmp_git_repo.{nonce} ; cd {wd} && {{ pip install -e . ; pip install -r requirements.txt; }} }}")
 
         return newrem
 
