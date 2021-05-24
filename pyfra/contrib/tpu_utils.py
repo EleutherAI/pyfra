@@ -180,8 +180,8 @@ def train_model(rem, experiment_name, dataset_bucket, model_bucket, tpu_config={
     data_conf["path"] = f"{dataset_bucket}/*.tfrecords"
     data_conf["eval_path"] = val_data
     config_json = config_for(experiment_name, model_size, tpu_size, config_override, model_bucket)
-    rem.jwrite(f"configs/{experiment_name}.json", config_json)
-    rem.jwrite(f"configs/dataset_configs/{experiment_name}_data.json", data_conf)
+    rem.file(f"configs/{experiment_name}.json").jwrite(config_json)
+    rem.file(f"configs/dataset_configs/{experiment_name}_data.json").jwrite(data_conf)
     # if resuming, copy from old dir
     if resume_from is not None:
         try:
@@ -249,7 +249,7 @@ def convert_neo_to_hf(rem_gcp, rem_hf, model_path, hf_url, config):
 def convert_neo_to_hf_for_index(rem_gcp, rem_hf, model_path, latest, hf_url, config):
     assert 'HF_USER' in os.environ and 'HF_PWD' in os.environ
 
-    rem_hf.fwrite("hf_login", f"""
+    rem_hf.file("hf_login").write(f"""
     spawn transformers-cli login
     expect "Username:"
     send "{os.environ['HF_USER']}\n"
@@ -275,7 +275,7 @@ def convert_neo_to_hf_for_index(rem_gcp, rem_hf, model_path, latest, hf_url, con
     gsutil cp {model_path}/checkpoint model/
     """).split('\n')
 
-    env_gcp.jwrite(f"config.json", config)
+    env_gcp.file("config.json").jwrite(config)
 
     env_gcp.sh(f"""
     pip install git+https://github.com/leogao2/transformers@patch-3 torch tensorflow
@@ -325,6 +325,8 @@ def run_eval_harness(rem, tasks, model_name, batch_size=1, gpu_id=0, k=0):
     env.sh("""
     pip3 install -U transformers sacrebleu
     """)
+    env.sh("pip3 install torch==1.7.1+cu110  -f https://download.pytorch.org/whl/torch_stable.html")
+
 
     env.sh(f"CUDA_VISIBLE_DEVICES={gpu_id} python3 main.py --model {model} --model_args pretrained={model_name} --tasks {tasks} --output_path eval_{slugify(model_name)}.json --batch_size {batch_size}" + (f" --num_fewshot {k}" if k != 0 else ""))
 
