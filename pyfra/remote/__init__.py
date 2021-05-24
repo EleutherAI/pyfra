@@ -37,7 +37,7 @@ def normalize_homedir(x):
 
 class RemoteFile:
     def __init__(self, remote, fname):
-        if remote == '127.0.0.1': remote = None
+        if remote.ip == '127.0.0.1' or remote.ip is None: remote = None
 
         self.remote = remote
         self.fname = fname
@@ -50,6 +50,34 @@ class RemoteFile:
             'remote': self.remote.ip,
             'fname': self.fname,
         }
+    
+    def write(self, content, append=False):
+        if self.remote is None:
+            with open(os.path.expanduser(self.fname), 'a' if append else 'w') as fh:
+                fh.write(content)
+        else:
+            nonce = random.randint(0, 99999)
+            with open(f".tmp.{nonce}", 'w') as fh:
+                fh.write(content)
+            if append:
+                _shell.rsync(f".tmp.{nonce}", self.remote.file(f".tmp.{nonce}"), quiet=True)
+                self.remote.sh(f"cat .tmp.{nonce} >> {self.fname} && rm .tmp.{nonce}")
+            else:
+                _shell.rsync(f".tmp.{nonce}", self, quiet=True)
+            _shell.rm(f".tmp.{nonce}")
+    
+    def read(self):
+        if self.remote is None:
+            with open(os.path.expanduser(self.fname)) as fh:
+                return fh.read()
+        else:
+            nonce = random.randint(0, 99999)
+            _shell.rsync(self, f".tmp.{nonce}", quiet=True)
+            with open(f".tmp.{nonce}") as fh:
+                ret = fh.read()
+                _shell.rm(f".tmp.{nonce}")
+                return ret
+    
 
 
 class Remote:

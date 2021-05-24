@@ -148,7 +148,17 @@ def test_fns():
         # make sure no error when deleting nonexistent
         rem.rm("testing_dir_fns")
 
+        # check file read and write
+        rem.file("testfile.pyfra").write("goose")
+        assert rem.file("testfile.pyfra").read() == "goose"
+        rem.file("testfile.pyfra").write("goose", append=True)
+        assert rem.file("testfile.pyfra").read() == "goosegoose"
+        rem.rm("testfile.pyfra")
+
     for rem in [local, rem1, rem2, env1, env2, locenv1, locenv2]: fns_test(rem)
+
+
+# todo: test env w git
 
 
 def teardown_module(module):
