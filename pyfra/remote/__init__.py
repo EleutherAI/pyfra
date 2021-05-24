@@ -148,7 +148,7 @@ class Remote:
         # install venv
         if wd is not None:
             pyenv_cmds = f"[ -d env/lib/python{python_version.rsplit('.')[0]} ] || rm -rf env ; pyenv shell {python_version} ;" if python_version is not None else ""
-            self.sh(f"mkdir -p {wd | _shell.quote}; cd {wd | _shell.quote}; {pyenv_cmds} [ -f env/bin/activate ] || virtualenv env", no_venv=True)
+            self.sh(f"mkdir -p {wd}; cd {wd}; {pyenv_cmds} [ -f env/bin/activate ] || virtualenv env", no_venv=True)
 
         # pull git
         if git is not None:
