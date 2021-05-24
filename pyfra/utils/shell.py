@@ -1,17 +1,17 @@
-import subprocess
-import os
-import sys
-import urllib
-import time
-import shutil
-import shlex
 import errno
+import os
+import random
 import re
-from colorama import Fore, Style
-from natsort import natsorted
-
+import shlex
+import shutil
+import subprocess
+import sys
+import time
+import urllib
 
 from best_download import download_file
+from colorama import Fore, Style
+from natsort import natsorted
 
 
 class ShellException(Exception): pass
@@ -100,6 +100,15 @@ def rsh(host, cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, connec
 def rsync(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True):
     frm = str(frm)
     to = str(to)
+
+    # copy from url
+    if frm.startswith("http://") or frm.startswith("https://"):
+        if ":" in to:
+            to_host, to_path = to.split(":")
+            rsh(to_host, f"curl {frm} --create-dirs -o {to}")
+        else:
+            wget(frm, to)
+        return
 
     if frm[-1] == '/' and len(frm) > 1: frm = frm[:-1]
     if not into: frm += '/'
