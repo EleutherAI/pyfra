@@ -6,7 +6,10 @@ import pickle
 import shlex
 import os
 import random
+import json
+import csv
 from natsort import natsorted
+import io
 
 
 def normalize_homedir(x):
@@ -78,6 +81,44 @@ class RemoteFile:
                 _shell.rm(f".tmp.{nonce}")
                 return ret
     
+    def jread(self):
+        return json.loads(self.read())
+
+    def jwrite(self, content):
+        self.write(json.dumps(content))
+
+    def csvread(self, colnames=None):
+        fh = io.StringIO(self.read())
+        if self.fname[-4:] == ".tsv":
+            rdr = csv.reader(fh, delimiter="\t")
+        else:
+            rdr = csv.reader(fh)
+
+        if colnames:
+            cols = colnames
+        else:
+            cols = list(next(rdr))
+        
+        for ob in rdr:
+            yield {
+                k: v for k, v in zip(cols, [*ob, *[None for _ in range(len(cols) - len(ob))]])
+            }
+    
+    def csvwrite(self, data, colnames=None):
+        fh = io.StringIO()
+        if colnames is None:
+            colnames = data[0].keys()
+
+        wtr = csv.writer(fh)
+        wtr.writerow(colnames)
+
+        for dat in data:
+            assert dat.keys() == colnames
+
+            wtr.writerow([dat[k] for k in colnames])
+        
+        fh.seek(0)
+        self.write(fh.read())
 
 
 class Remote:
