@@ -216,6 +216,17 @@ def train_model(rem, experiment_name, dataset_bucket, model_bucket, tpu_config={
     return config_json
 
 
+@once
+def train_model_jax(rem, experiment_name, tpu_name, region, custom_config): 
+    env = rem.env(f"jax_{experiment_name}", "https://github.com/kingoflolz/mesh-transformer-jax/")
+
+    wget("https://gist.githubusercontent.com/leogao2/bf311d064af8e7cd7b6c522e9835b577/raw/6ebab4465f9df30d2398ee21728a4196ac6da3a7/jax_config.json")
+    conf = jread("jax_config.json")
+    for k, v in custom_config.items():
+        conf[k] = v
+    env.file(f"configs/{experiment_name}.json").jwrite(conf)
+    env.sh(f"python train.py --tpu {tpu_name} --preemptible --config configs/{experiment_name}.json --tpu_region {region}")
+
 def latest_model_index(rem, model_path):
     files = rem.sh(f"gsutil ls {model_path}", ignore_errors=True)
 
