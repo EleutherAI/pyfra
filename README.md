@@ -1,6 +1,6 @@
 # pyfra
 
-*The Python Research Framework.*
+*The Python Framework for Research Applications.*
 
 ## Design Philosophy
 
