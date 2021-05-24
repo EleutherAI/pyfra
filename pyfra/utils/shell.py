@@ -180,7 +180,7 @@ def wget(url, to=None, checksum=None):
     # thin wrapper for best_download
 
     if to is None:
-        to = os.path.basename(to)
+        to = os.path.basename(url)
         if not to: to = 'index'
 
     download_file(url, to, checksum)
