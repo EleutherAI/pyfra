@@ -57,7 +57,7 @@ class RemoteFile:
     # for compatibility; deprecated
     def write(self, content, append=False):
         return self.fwrite(content, append)
-    def fread(self):
+    def read(self):
         return self.fread()
     
     def fwrite(self, content, append=False):
