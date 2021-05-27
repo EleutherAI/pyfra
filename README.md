@@ -32,7 +32,7 @@ nas = Remote("user@example2.com")
 def run_experiment(server: str, config_file: str, some_numerical_value: int, some_checkbox: bool):
     r = loc if server == 'local' else rem
 
-    env = r.env("neox", "git clone https://github.com/EleutherAI/gpt-neox")
+    env = r.env("neox", "https://github.com/EleutherAI/gpt-neox")
     
     # rsync as a function can do local-local, local-remote, and remote-remote
     rsync(config_file, env.file("configs/my-config.yml"))
