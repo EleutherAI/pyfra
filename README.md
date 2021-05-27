@@ -42,7 +42,7 @@ def run_experiment(server: str, config_file: str, some_numerical_value: int, som
 
 @page("Write example file and copy")
 def example():
-    rem.file("testing.txt").write("hello world")
+    rem.file("testing.txt").fwrite("hello world")
     
     # tlocal files can be specified as just a string
     rsync(rem.file('testing123.txt'), 'test1.txt')
@@ -55,7 +55,7 @@ def example():
     # fread, fwrite, etc can take a `rem.file` instead of a string filename.
     # you can also use all *read and *write functions directly on the remote too.
     assert fread('test1.txt') == fread(rem.file('testing123.txt'))
-    assert fread('test1.txt') == rem.file('testing123.txt').read()
+    assert fread('test1.txt') == rem.file('testing123.txt').fread()
 
     # ls as a function returns a list of files (with absolute paths) on the selected remote.
     # the returned value is displayed on the webpage.
