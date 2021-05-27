@@ -54,7 +54,13 @@ class RemoteFile:
             'fname': self.fname,
         }
     
+    # for compatibility; deprecated
     def write(self, content, append=False):
+        return self.fwrite(content, append)
+    def fread(self):
+        return self.fread()
+    
+    def fwrite(self, content, append=False):
         if self.remote is None:
             with open(os.path.expanduser(self.fname), 'a' if append else 'w') as fh:
                 fh.write(content)
@@ -69,7 +75,7 @@ class RemoteFile:
                 _shell.rsync(f".tmp.{nonce}", self, quiet=True)
             _shell.rm(f".tmp.{nonce}")
     
-    def read(self):
+    def fread(self):
         if self.remote is None:
             with open(os.path.expanduser(self.fname)) as fh:
                 return fh.read()
