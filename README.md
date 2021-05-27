@@ -42,7 +42,7 @@ def run_experiment(server: str, config_file: str, some_numerical_value: int, som
 
 @page("Write example file and copy")
 def example():
-    rem.fwrite("testing.txt", "hello world")
+    rem.file("testing.txt").write("hello world")
     
     # tlocal files can be specified as just a string
     rsync(rem.file('testing123.txt'), 'test1.txt')
