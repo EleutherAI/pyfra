@@ -166,10 +166,10 @@ def trim_slash(x):
 
 
 @once
-def train_model(rem, experiment_name, dataset_bucket, model_bucket, tpu_config={}, model_size="1.3B", val_data="gs://neo-d/atasets/pile_val.tfrecords", resume_from=None, config_override={}, tpu_name=None, steps_per_checkpoint=1000): 
+def train_model(rem, experiment_name, dataset_bucket, model_bucket, tpu_config={}, model_size="1.3B", val_data="gs://neo-d/atasets/pile_val.tfrecords", resume_from=None, config_override={}, tpu_name=None, steps_per_checkpoint=1000, git_repo="https://github.com/leogao2/gpt-neo/", git_branch=None): 
     dataset_bucket, model_bucket, resume_from = map(trim_slash, [dataset_bucket, model_bucket, resume_from])
     
-    rem = rem.env(f"neo_{experiment_name}", "https://github.com/leogao2/gpt-neo/")
+    rem = rem.env(f"neo_{experiment_name}", git_repo, branch=git_branch)
 
     if tpu_name is None:
         tpu_name = "neo_" + experiment_name
