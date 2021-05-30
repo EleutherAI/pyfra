@@ -131,7 +131,7 @@ class Remote:
 
         # self.sh("pip install -U git+https://github.com/EleutherAI/pyfra/")
 
-    def env(self, wd=None, git=None, python_version=None):
+    def env(self, wd=None, git=None, branch=None, python_version=None):
         if python_version is None: python_version = self.pyenv_version
         if wd is None:
             return Remote(self.ip, None, self.pyenv_version)
@@ -154,7 +154,13 @@ class Remote:
         if git is not None:
             # TODO: make this usable
             nonce = str(random.randint(0, 99999))
-            newrem.sh(f"{{ rm -rf .tmp_git_repo ; git clone {git} .tmp_git_repo.{nonce} ; rsync -ar .tmp_git_repo.{nonce}/ {wd}/ ; rm -rf .tmp_git_repo.{nonce} ; cd {wd} && {{ pip install -e . ; pip install -r requirements.txt; }} }}")
+
+            if branch is None:
+                branch_cmds = ""
+            else:
+                branch_cmds = f"git checkout {branch}; git pull origin {branch}; "
+
+            newrem.sh(f"{{ rm -rf .tmp_git_repo ; git clone {git} .tmp_git_repo.{nonce} ; rsync -ar .tmp_git_repo.{nonce}/ {wd}/ ; rm -rf .tmp_git_repo.{nonce} ; cd {wd}; {branch_cmds} {{ pip install -e . ; pip install -r requirements.txt; }} }}")
 
         return newrem
 
