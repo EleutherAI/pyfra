@@ -1,4 +1,9 @@
 best_download
+ansi2html
+sqlitedict
+colorama
+parse
+natsort
 
 # web
 flask
