@@ -27,6 +27,9 @@ def _normalize_homedir(x):
     if '~/' in x:
         x = x.split('~/')[-1]
     
+    if x[-2:] == '/~':
+        return '~'
+    
     # some special cases
     if x == '': return '~'
     if x == '.': return '~'
@@ -77,7 +80,7 @@ class RemoteFile:
         self.fname = fname
     
     def __repr__(self):
-        return f"{self.remote}:{self.fname}" if self.remote.ip is not None else self.fname
+        return f"{self.remote}:{self.fname}" if self.remote is not None and self.remote.ip is not None else self.fname
     
     def _to_json(self):
         return {
@@ -264,7 +267,7 @@ class Remote:
     def _install(self):
         if not self.installed:
             # set up remote python version
-            install_pyenv(self, self.pyenv_version)
+            if self.pyenv_version is not None: install_pyenv(self, self.pyenv_version)
             self.installed = True    
 
     def sh(self, x, quiet=False, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False):

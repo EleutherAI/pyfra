@@ -1,4 +1,5 @@
 from pyfra import *
+import pyfra.remote as pyr
 import os
 import random
 
@@ -28,16 +29,16 @@ def setup_module(module):
 def test_workdir_semantics():
     global rem1, rem2
 
-    assert _normalize_homedir("somepath") == "~/somepath"
-    assert _normalize_homedir("~/somepath") == "~/somepath"
-    assert _normalize_homedir(".") == "~"
-    assert _normalize_homedir("~") == "~"
-    assert _normalize_homedir("/") == "/"
-    assert _normalize_homedir("somepath/") == "~/somepath"
-    assert _normalize_homedir("/somepath/") == "/somepath"
-    assert _normalize_homedir("./somepath") == "~/somepath"
+    assert pyr._normalize_homedir("somepath") == "~/somepath"
+    assert pyr._normalize_homedir("~/somepath") == "~/somepath"
+    assert pyr._normalize_homedir(".") == "~"
+    assert pyr._normalize_homedir("~") == "~"
+    assert pyr._normalize_homedir("/") == "/"
+    assert pyr._normalize_homedir("somepath/") == "~/somepath"
+    assert pyr._normalize_homedir("/somepath/") == "/somepath"
+    assert pyr._normalize_homedir("./somepath") == "~/somepath"
     
-    for rem in [rem1, rem2, local]:
+    for rem in [rem1, rem2]:
         assert rem.file("somepath").fname == "~/somepath"
         assert rem.file("~/somepath").fname == "~/somepath"
         assert rem.file(".").fname == "~"
@@ -46,10 +47,19 @@ def test_workdir_semantics():
         assert rem.file("somepath/").fname == "~/somepath"
         assert rem.file("/somepath/").fname == "/somepath"
         assert rem.file("./somepath").fname == "~/somepath"
+    
+    assert local.file("somepath").fname == os.getcwd() + "/somepath"
+    assert local.file("~/somepath").fname == "~/somepath"
+    assert local.file(".").fname == os.getcwd()
+    assert local.file("~").fname == "~"
+    assert local.file("/").fname == "/"
+    assert local.file("somepath/").fname == os.getcwd() + "/somepath"
+    assert local.file("/somepath/").fname == "/somepath"
+    assert local.file("./somepath").fname == os.getcwd() + "/somepath"
 
     # sh path
     assert sh("echo $PWD") == os.getcwd()
-    assert local.sh("echo $PWD") == os.path.expanduser("~")
+    assert local.sh("echo $PWD") == os.getcwd()
     assert rem1.sh("echo $PWD") == "/root"
 
     # env path
