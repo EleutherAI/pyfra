@@ -50,12 +50,8 @@ def example():
 
     loc.sh('cat test1.txt')
     
-    assert fread('test1.txt') == fread('test2.txt')
-    
-    # fread, fwrite, etc can take a `rem.file` instead of a string filename.
-    # you can also use all *read and *write functions directly on the remote too.
-    assert fread('test1.txt') == fread(rem.file('testing123.txt'))
-    assert fread('test1.txt') == rem.file('testing123.txt').fread()
+    assert loc.file('test1.txt').read() == loc.file('test2.txt').read()
+    assert loc.file('test1.txt').read() == rem.file('testing123.txt').read()
 
     # ls as a function returns a list of files (with absolute paths) on the selected remote.
     # the returned value is displayed on the webpage.
