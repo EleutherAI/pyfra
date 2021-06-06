@@ -1,5 +1,5 @@
 from pyfra.utils.misc import once
-from pyfra.utils.shell import *
+from pyfra.shell import *
 from functools import wraps, partial
 
 

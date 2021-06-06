@@ -14,18 +14,10 @@ pyfra.remote module
    :undoc-members:
    :show-inheritance:
 
-pyfra.utils.shell module
+pyfra.shell module
 =================================
 
-.. automodule:: pyfra.utils.shell
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-pyfra.utils.files module
-=================================
-
-.. automodule:: pyfra.utils.files
+.. automodule:: pyfra.shell
    :members:
    :undoc-members:
    :show-inheritance:

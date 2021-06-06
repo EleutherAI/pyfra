@@ -17,7 +17,7 @@ from natsort import natsorted
 class ShellException(Exception): pass
 
 
-__all__ = ['sh', 'rsh', 'rsync', 'ls', 'rm', 'curl', 'wget', 'quote', 'columns']
+__all__ = ['sh', 'rsh', 'rsync', 'ls', 'rm', 'curl', 'wget', 'quote']
 
 
 def _wrap_command(x, no_venv=False, pyenv_version=None):
@@ -184,9 +184,6 @@ def wget(url, to=None, checksum=None):
         if not to: to = 'index'
 
     download_file(url, to, checksum)
-
-def columns(x):
-    return re.split((r'\s+'), x)
 
 # convenience function for shlex.quote
 class _quote:

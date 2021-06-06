@@ -18,7 +18,6 @@ from .models import User
 
 from flask_admin.contrib.sqla import ModelView
 
-from pyfra.utils import *
 import collections
 import pathlib
 
@@ -110,7 +109,7 @@ def register_page(name, pretty_name, form_class, callback, allowed_roles, redire
             html = callback({})
             form = None
 
-        return render_template_string(fread(template_path / 'form_template.html'), body=html, form=form, title=pretty_name, has_form=has_form)
+        return render_template_string(open(template_path / 'form_template.html').read(), body=html, form=form, title=pretty_name, has_form=has_form)
     
     app.add_url_rule(f"/{name}", name, _fn, methods=['GET', 'POST'])
 

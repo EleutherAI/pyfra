@@ -28,14 +28,14 @@ def setup_module(module):
 def test_workdir_semantics():
     global rem1, rem2
 
-    assert normalize_homedir("somepath") == "~/somepath"
-    assert normalize_homedir("~/somepath") == "~/somepath"
-    assert normalize_homedir(".") == "~"
-    assert normalize_homedir("~") == "~"
-    assert normalize_homedir("/") == "/"
-    assert normalize_homedir("somepath/") == "~/somepath"
-    assert normalize_homedir("/somepath/") == "/somepath"
-    assert normalize_homedir("./somepath") == "~/somepath"
+    assert _normalize_homedir("somepath") == "~/somepath"
+    assert _normalize_homedir("~/somepath") == "~/somepath"
+    assert _normalize_homedir(".") == "~"
+    assert _normalize_homedir("~") == "~"
+    assert _normalize_homedir("/") == "/"
+    assert _normalize_homedir("somepath/") == "~/somepath"
+    assert _normalize_homedir("/somepath/") == "/somepath"
+    assert _normalize_homedir("./somepath") == "~/somepath"
     
     for rem in [rem1, rem2, local]:
         assert rem.file("somepath").fname == "~/somepath"
