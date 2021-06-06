@@ -245,11 +245,6 @@ class Remote:
 
         newrem = Remote(self.ip, wd, self.pyenv_version if python_version is None else python_version)
 
-        # install venv
-        if wd is not None:
-            pyenv_cmds = f"[ -d env/lib/python{python_version.rsplit('.')[0]} ] || rm -rf env ; pyenv shell {python_version} ;" if python_version is not None else ""
-            self.sh(f"mkdir -p {wd}; cd {wd}; {pyenv_cmds} [ -f env/bin/activate ] || virtualenv env", no_venv=True)
-
         # pull git
         if git is not None:
             # TODO: make this usable
@@ -260,7 +255,13 @@ class Remote:
             else:
                 branch_cmds = f"git checkout {branch}; git pull origin {branch}; "
 
-            newrem.sh(f"{{ rm -rf .tmp_git_repo ; git clone {git} .tmp_git_repo.{nonce} ; rsync -ar --delete .tmp_git_repo.{nonce}/ {wd}/ ; rm -rf .tmp_git_repo.{nonce} ; cd {wd}; {branch_cmds} {{ pip install -e . ; pip install -r requirements.txt; }} }}")
+            newrem.sh(f"{{ rm -rf ~/.tmp_git_repo.{nonce} ; git clone {git} ~/.tmp_git_repo.{nonce} ; rsync -ar --delete ~/.tmp_git_repo.{nonce}/ {wd}/ ; rm -rf ~/.tmp_git_repo.{nonce} ; cd {wd}; {branch_cmds} }}", ignore_errors=True)
+
+        # install venv
+        if wd is not None:
+            pyenv_cmds = f"[ -d env/lib/python{python_version.rsplit('.')[0]} ] || rm -rf env ; pyenv shell {python_version} ;" if python_version is not None else ""
+            self.sh(f"mkdir -p {wd}; cd {wd}; {pyenv_cmds} [ -f env/bin/activate ] || virtualenv env", no_venv=True)
+            newrem.sh("pip install -e . ; pip install -r requirements.txt")
 
         return newrem
     
