@@ -2,6 +2,9 @@
 
 *The Python Framework for Research Applications.*
 
+[![Documentation Status](https://readthedocs.org/projects/pyfra/badge/?version=latest)](https://pyfra.readthedocs.io/en/latest/?badge=latest)
+      
+
 ## Design Philosophy
 
 Research code has some of the fastest shifting requirements of any type of code. It's nearly impossible to plan ahead of time the proper abstractions, because it is exceedingly likely that in the course of the project what you originally thought was your main focus suddenly no longer is. Further, research code (especially in ML) often involves big and complicated pipelines, typically involving many different machines, which are either run by hand or using shell scripts that are far more complicated than any shell script ever should be. 
@@ -18,6 +21,8 @@ Features:
  - (WIP) Tools for painless functional programming in python
  - (Coming soon) High level API for experiment management/scheduling and resource provisioning
  - (Coming soon) Idempotent resumable data pipelines with no cognitive overhead
+
+Want to dive in? See the [documentation](https://pyfra.readthedocs.io/en/latest/).
 
 ## Example code
 
