@@ -17,7 +17,7 @@ from natsort import natsorted
 class ShellException(Exception): pass
 
 
-__all__ = ['sh', 'rsh', 'rsync', 'ls', 'rm', 'curl', 'wget', 'quote']
+__all__ = ['sh', 'rsync', 'ls', 'rm', 'curl', 'wget', 'quote']
 
 
 def _wrap_command(x, no_venv=False, pyenv_version=None):
@@ -63,14 +63,30 @@ def _sh(cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, ignore_error
     return ret.decode("utf-8").replace("\r\n", "\n").strip()
 
 
-def sh(cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, connection_timeout=10, ignore_errors=False, no_venv=False, pyenv_version=None):
+def sh(cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False, pyenv_version=None):
+    """
+    Runs commands as if it were in a local bash terminal.
+
+    This function patches out the non-interactive detection in bashrc and sources it, activates virtualenvs and sets pyenv shell, handles interrupts correctly, and returns the text printed to stdout.
+
+    Args:
+        quiet (bool): If turned on, nothing is printed to stdout.
+        wd (str): Working directory to run in. Defaults to ~
+        wrap (bool): Magic for the bashrc, virtualenv, interrupt-handing, and pyenv stuff. Turn off to make this essentially os.system
+        maxbuflen (int): Max number of bytes to save and return. Useful to prevent memory errors.
+        ignore_errors (bool): If set, errors will be swallowed.
+        no_venv (bool): If set, virtualenv will not be activated
+        pyenv_version (str): Pyenv version to use. Will be silently ignored if not found.
+    Returns:
+        The standard output of the command, limited to maxbuflen bytes.
+    """
     if wd is None: wd = os.getcwd()
 
-    return rsh("127.0.0.1", cmd, quiet, wd, wrap, maxbuflen, connection_timeout, ignore_errors, no_venv, pyenv_version)
+    return _rsh("127.0.0.1", cmd, quiet, wd, wrap, maxbuflen, -1, ignore_errors, no_venv, pyenv_version)
 
 
-def rsh(host, cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, connection_timeout=10, ignore_errors=False, no_venv=False, pyenv_version=None):
-    if host is None: host = "127.0.0.1"
+def _rsh(host, cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, connection_timeout=10, ignore_errors=False, no_venv=False, pyenv_version=None):
+    if host is None or host == "localhost": host = "127.0.0.1"
 
     if not quiet:
         # display colored message
@@ -98,6 +114,17 @@ def rsh(host, cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, connec
     return _sh(f"ssh -q -oConnectTimeout={connection_timeout} -oBatchMode=yes -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -t {host} {shlex.quote(cmd)}", quiet=quiet, wrap=False, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv)
 
 def rsync(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True):
+    """
+    Copies things from one place to another.
+
+    Args:
+        frm (str or RemoteFile): Can be a string indicating a local path, a :class:`pyfra.remote.RemoteFile`, or a URL.
+        to (str or RemoteFile): Can be a string indicating a local path or a :class:`pyfra.remote.RemoteFile`.
+        quiet (bool): Disables logging.
+        connection_timeout (int): How long in seconds to give up after
+        symlink_ok (bool): If frm and to are on the same machine, symlinks will be created instead of actually copying. Set to false to force copying.
+        into (bool): If frm is a file, this has no effect. If frm is a directory, then into=True for frm="src" and to="dst" means "src/a" will get copied to "dst/src/a", whereas into=False means "src/a" will get copied to "dst/a".
+    """
     frm = str(frm)
     to = str(to)
 
@@ -105,7 +132,7 @@ def rsync(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=Tru
     if frm.startswith("http://") or frm.startswith("https://"):
         if ":" in to:
             to_host, to_path = to.split(":")
-            rsh(to_host, f"curl {frm} --create-dirs -o {to}")
+            _rsh(to_host, f"curl {frm} --create-dirs -o {to}")
         else:
             wget(frm, to)
         return
@@ -132,9 +159,9 @@ def rsync(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=Tru
 
         if to_host == frm_host:
             if symlink_ok:
-                rsh(frm_host, f"[ -d {frm_path} ] && mkdir -p {to_path}; ln -sf {symlink_frm(frm_path)} {to_path}")
+                _rsh(frm_host, f"[ -d {frm_path} ] && mkdir -p {to_path}; ln -sf {symlink_frm(frm_path)} {to_path}")
             else:
-                rsh(frm_host, f"rsync {opts} {frm_path} {to_path}")
+                _rsh(frm_host, f"rsync {opts} {frm_path} {to_path}")
         else:
             rsync_cmd = f"rsync {opts} {frm_path} {to}"
                 
@@ -177,6 +204,7 @@ def curl(url, max_tries=10, timeout=30): # TODO: add checksum option
         return data
 
 def wget(url, to=None, checksum=None):
+    # DEPRECATED
     # thin wrapper for best_download
 
     if to is None:
