@@ -84,7 +84,7 @@ class RemoteFile:
     
     def _to_json(self):
         return {
-            'remote': self.remote.ip,
+            'remote': self.remote.ip if self.remote is not None else None,
             'fname': self.fname,
         }
     
