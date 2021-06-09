@@ -113,7 +113,7 @@ def _rsh(host, cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, conne
 
     return _sh(f"ssh -q -oConnectTimeout={connection_timeout} -oBatchMode=yes -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -t {host} {shlex.quote(cmd)}", quiet=quiet, wrap=False, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv)
 
-def rsync(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True):
+def rsync(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True, exclude=[]):
     """
     Copies things from one place to another.
 
@@ -145,6 +145,9 @@ def rsync(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=Tru
     else:
         opts = "-e \"ssh -o StrictHostKeyChecking=no\" -ar --info=progress2"
     
+    for ex in exclude:
+        opts += f" --exclude {ex | quote}"
+    
     def symlink_frm(frm):
         # rsync behavior is to copy the contents of frm into to if frm ends with a /
         if frm[-1] == '/': frm += '*'
@@ -159,6 +162,7 @@ def rsync(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=Tru
 
         if to_host == frm_host:
             if symlink_ok:
+                assert not exclude, "Cannot use exclude symlink"
                 _rsh(frm_host, f"[ -d {frm_path} ] && mkdir -p {to_path}; ln -sf {symlink_frm(frm_path)} {to_path}")
             else:
                 _rsh(frm_host, f"rsync {opts} {frm_path} {to_path}")
@@ -168,6 +172,7 @@ def rsync(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=Tru
             sh(f"eval \"$(ssh-agent -s)\"; ssh-add ~/.ssh/id_rsa; ssh -q -oConnectTimeout={connection_timeout} -oBatchMode=yes -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -A {frm_host} {rsync_cmd | quote}", wrap=False)
     else:
         if symlink_ok and ":" not in frm and ":" not in to:
+            assert not exclude, "Cannot use exclude symlink"
             sh(f"[ -d {frm} ] && mkdir -p {to}; ln -sf {symlink_frm(frm)} {to}")
         else:
             sh(f"rsync {opts} {frm} {to}", wrap=False)
