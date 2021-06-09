@@ -243,6 +243,8 @@ class Remote:
         if wd[-1] == '/': wd = wd[:-1]
         wd = self.file(wd).fname
 
+        self.sh(f"mkdir -p {wd}")
+
         newrem = Remote(self.ip, wd, self.pyenv_version if python_version is None else python_version)
 
         # pull git
