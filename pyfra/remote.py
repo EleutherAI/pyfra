@@ -271,6 +271,8 @@ class Remote:
             if self.pyenv_version is not None: install_pyenv(self, self.pyenv_version)
             self.installed = True    
 
+            self.sh("rsync --help > /dev/null || sudo apt-get install -y rsync")
+
     def sh(self, x, quiet=False, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False):
         """
         Run a series of bash commands on this remote. This command shares the same arguments as :func:`pyfra.shell.sh`.
@@ -290,6 +292,7 @@ class Remote:
             assert fname.remote == self
             return fname
 
+        self._install()
         return RemoteFile(self, _normalize_homedir(os.path.join(self.wd, fname) if self.wd is not None else fname))
 
     def __repr__(self):
