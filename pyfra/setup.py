@@ -27,8 +27,6 @@ def ensure_supported(r):
 
 
 def install_pyenv(r, version="3.9.4"):
-    r.pyenv_version = None
-
     if r.sh(f"pyenv shell {version} 2> /dev/null; python --version", no_venv=True, ignore_errors=True).strip().split(" ")[-1] == version:
         return
 
@@ -72,8 +70,6 @@ eval "$(pyenv virtualenv-init -)"
     r.sh("pyenv update", ignore_errors=True)
 
     r.sh(f"pyenv install --verbose -s {version}")
-
-    r.pyenv_version = version
 
     # make sure the versions all check out
     assert r.sh(f"python --version", no_venv=True).strip().split(" ")[-1] == version

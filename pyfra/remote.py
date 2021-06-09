@@ -15,6 +15,9 @@ from natsort import natsorted
 import io
 
 
+sentinel = object()
+
+
 def _normalize_homedir(x):
 
     if x[:2] == './':
@@ -238,14 +241,14 @@ class Remote:
         """
         if python_version is None: python_version = self.pyenv_version
         if wd is None:
-            return Remote(self.ip, None, self.pyenv_version)
+            return Remote(self.ip, None, python_version)
 
         if wd[-1] == '/': wd = wd[:-1]
         wd = self.file(wd).fname
 
         self.sh(f"mkdir -p {wd}")
 
-        newrem = Remote(self.ip, wd, self.pyenv_version if python_version is None else python_version)
+        newrem = Remote(self.ip, wd, python_version)
 
         # pull git
         if git is not None:
@@ -269,22 +272,23 @@ class Remote:
     
     def _install(self):
         if not self.installed:
+            # set flag first to prevent _install reentrancy
+            self.installed = True    
             # set up remote python version
             if self.pyenv_version is not None: install_pyenv(self, self.pyenv_version)
-            self.installed = True    
 
             self.sh("rsync --help > /dev/null || sudo apt-get install -y rsync")
 
-    def sh(self, x, quiet=False, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False):
+    def sh(self, x, quiet=False, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False, pyenv_version=sentinel):
         """
         Run a series of bash commands on this remote. This command shares the same arguments as :func:`pyfra.shell.sh`.
         """
         self._install()
     
         if self.ip is None:
-            return _shell.sh(x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=self.pyenv_version)
+            return _shell.sh(x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=pyenv_version if pyenv_version is not sentinel else self.pyenv_version)
         else:
-            return _shell._rsh(self.ip, x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=self.pyenv_version)
+            return _shell._rsh(self.ip, x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=pyenv_version if pyenv_version is not sentinel else self.pyenv_version)
     
     def file(self, fname) -> RemoteFile:
         """
