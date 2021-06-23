@@ -34,7 +34,7 @@ def _sh(cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, ignore_error
 
     if wd is None: wd = "~"
 
-    cmd = f"cd {wd}; {cmd}"
+    cmd = f"cd {wd}  > /dev/null 2>&1; {cmd}"
 
     p = subprocess.Popen(cmd, shell=True,
         stdout=subprocess.PIPE,
@@ -109,7 +109,7 @@ def _rsh(host, cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, conne
         return _sh(cmd, quiet, wd, wrap, maxbuflen, ignore_errors, no_venv, pyenv_version)
 
     if wrap: cmd = _wrap_command(cmd, no_venv=no_venv, pyenv_version=pyenv_version)
-    if wd: cmd = f"cd {wd}; {cmd}"
+    if wd: cmd = f"cd {wd}  > /dev/null 2>&1; {cmd}"
 
     return _sh(f"ssh -q -oConnectTimeout={connection_timeout} -oBatchMode=yes -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -t {host} {shlex.quote(cmd)}", quiet=quiet, wrap=False, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv)
 
