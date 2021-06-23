@@ -141,9 +141,9 @@ def rsync(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=Tru
     if not into: frm += '/'
 
     if quiet:
-        opts = "-e \"ssh -o StrictHostKeyChecking=no\" -arq"
+        opts = "-e \"ssh -o StrictHostKeyChecking=no\" -arqL"
     else:
-        opts = "-e \"ssh -o StrictHostKeyChecking=no\" -ar --info=progress2"
+        opts = "-e \"ssh -o StrictHostKeyChecking=no\" -arL --info=progress2"
     
     for ex in exclude:
         opts += f" --exclude {ex | quote}"
