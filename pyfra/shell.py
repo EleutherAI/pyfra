@@ -8,11 +8,13 @@ import subprocess
 import sys
 import time
 import urllib
+import json
 
 from best_download import download_file
 from colorama import Fore, Style
 from natsort import natsorted
 import pyfra.remote
+import re
 
 class ShellException(Exception): pass
 
@@ -29,12 +31,35 @@ def _wrap_command(x, no_venv=False, pyenv_version=None):
     return hdr + x
 
 
+def _process_remotepaths(host, cmd):
+    candidates = re.findall(r"RemotePath\((.+?)\)", cmd)
+
+    for c in candidates:
+        ob = json.loads(c)
+        rem = ob["remote"] if ob["remote"] is not None else "127.0.0.1"
+        fname = ob["fname"]
+
+        if rem != host:
+            loc_fname = rem.replace(".", "_").replace("@", "_")
+            if loc_fname.startswith("~/"): loc_fname = loc_fname[2:]
+            if loc_fname.startswith("/"): loc_fname = loc_fname[1:]
+            loc_fname = "~/.pyfra_remote_files/" + loc_fname
+
+            copy(f"{rem}:{fname}", f"{host}:{loc_fname}")
+
+            cmd = cmd.replace(f"RemotePath({c})", loc_fname)
+        else:
+            cmd = cmd.replace(f"RemotePath({c})", fname)
+    
+    return cmd
+
+
 def _sh(cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False, pyenv_version=None):
     if wrap: cmd = _wrap_command(cmd, no_venv=no_venv, pyenv_version=pyenv_version)
 
     if wd is None: wd = "~"
 
-    cmd = f"cd {wd}  > /dev/null 2>&1; {cmd}"
+    cmd = f"cd {wd} > /dev/null 2>&1; {cmd}"
 
     print(cmd)
 
@@ -62,7 +87,6 @@ def _sh(cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, ignore_error
     elif p.returncode != 0 and not ignore_errors:
         raise ShellException(p.returncode)
 
-    print(ret)
     return ret.decode("utf-8").replace("\r\n", "\n").strip()
 
 
@@ -90,6 +114,8 @@ def sh(cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, ignore_errors
 
 def _rsh(host, cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, connection_timeout=10, ignore_errors=False, no_venv=False, pyenv_version=None):
     if host is None or host == "localhost": host = "127.0.0.1"
+
+    cmd = _process_remotepaths(host, cmd)
 
     if not quiet:
         # display colored message

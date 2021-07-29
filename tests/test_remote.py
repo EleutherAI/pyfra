@@ -79,6 +79,7 @@ def test_workdir_semantics():
         copy(a.path("origin_test_dir/test_pyfra.txt"), b.path("test2_pyfra.txt"))
         copy(a.path("origin_test_dir"), b.path("test_dir_1"))
         copy(a.path("origin_test_dir"), b.path("test_dir_2"), into=False)
+        ic(b.sh("ls"))
         assert b.sh("cat test2_pyfra.txt") == f"hello world {payload}"
         assert b.sh("cat test_dir_1/origin_test_dir/test_pyfra.txt") == f"hello world {payload}"
         assert b.sh("cat test_dir_2/test_pyfra.txt") == f"hello world {payload}"
@@ -166,6 +167,14 @@ def test_fns():
         rem.rm("testfile.pyfra")
 
     for rem in [local, rem1, rem2, env1, env2, locenv1, locenv2]: fns_test(rem)
+
+
+def test_remotefile_implicit_copy():
+    global rem1, rem2
+
+    f1 = rem1.path("testfile_copy.pyfra")
+    f1.write("goose")
+    assert rem2.sh(f"cat {f1}") == "goose"
 
 
 # todo: test env w git
