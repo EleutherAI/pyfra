@@ -19,7 +19,7 @@ sentinel = object()
 
 
 def _normalize_homedir(x):
-
+    """ Essentially expanduser(path.join("~", x)) but remote-agnostic """
     if x[:2] == './':
         x = x[2:]
     if x[-2:] == '/.':
@@ -193,7 +193,7 @@ class RemoteFile:
 
 
 class Remote:
-    def __init__(self, ip=None, wd=None, python_version="3.9.4"):
+    def __init__(self, ip=None, wd=None):
         """
         Args:
             ip (str): The host to ssh to. This looks something like :code:`12.34.56.78` or :code:`goose.com` or :code:`someuser@12.34.56.78` or :code:`someuser@goose.com`. You must enable passwordless ssh and have your ssh key added to the server first. If None, the Remote represents localhost.
@@ -205,90 +205,28 @@ class Remote:
         self.ip = ip
 
         self.wd = _normalize_homedir(wd) if wd is not None else "~"
-        
-        self.pyenv_version = python_version
 
-        self.installed = False
-
-    def env(self, wd, git=None, branch=None, python_version=None) -> Remote:
+    def env(self, envname, git=None, branch=None, python_version="3.9.4") -> Remote:
         """
-        An environment is a Remote pointing to a directory that has a virtualenv and a specific version version of python installed, optionally initialized from a git repo. Since environments are also just Remotes, all methods on Remotes work on environments too (including env itself, which makes a nested environment within that invironment with no problems whatsoever).
-
-        A typical design pattern sees functions accepting remotes as argument and immediately turning it into an env that's used for the rest of the function. 
-
-        Example usage: ::
-
-            def train_model(rem, ...):
-                e = rem.env("neo_experiment", "https://github.com/EleutherAI/gpt-neo", python_version="3.8.10")
-                e.sh("do something")
-                e.sh("do something else")
-                f = some_other_thing(e, ...)
-                e.file("goose.txt").write(f.jread()["honk"])
-            
-            def some_other_thing(rem, ...):
-                # this makes an env inside the other env
-                e = rem.env("other_thing", "https://github.com/EleutherAI/thing-doer-5000", python_version="3.8.10")
-                e.sh("do something")
-                e.sh("do something else")
-
-                return e.file("output.json")
-
         Args:
-            wd (str): The working directory for the environment.
+            envname (str): The name for the environment.
             git (str): A git repo to clone for the environment. If the repo already exists it (and any local changes) will be reset and overwritten with a fresh clone. If None, nothing will be cloned. The requirements.txt will be automatically installed in the virtualenv.
             branch (str): Check out a particular branch. Defaults to whatever the repo default is.
             python_version (str): The python version for this environment. Defaults to the python version of this Remote.
         """
-        if python_version is None: python_version = self.pyenv_version
-        if wd is None:
-            return Remote(self.ip, None, python_version)
 
-        if wd[-1] == '/': wd = wd[:-1]
-        wd = self.file(wd).fname
+        wd = f"~/pyfra_envs/{envname}"
 
-        self.sh(f"mkdir -p {wd}")
+        return Env(ip=self.ip, wd=wd, git=git, branch=branch, python_version=python_version)
 
-        newrem = Remote(self.ip, wd, python_version)
-
-        # pull git
-        if git is not None:
-            # TODO: make this usable
-            nonce = str(random.randint(0, 99999))
-
-            if branch is None:
-                branch_cmds = ""
-            else:
-                branch_cmds = f"git checkout {branch}; git pull origin {branch}; "
-
-            newrem.sh(f"{{ rm -rf ~/.tmp_git_repo.{nonce} ; git clone {git} ~/.tmp_git_repo.{nonce} ; rsync -ar --delete ~/.tmp_git_repo.{nonce}/ {wd}/ ; rm -rf ~/.tmp_git_repo.{nonce} ; cd {wd}; {branch_cmds} }}", ignore_errors=True)
-
-        # install venv
-        if wd is not None:
-            pyenv_cmds = f"[ -d env/lib/python{python_version.rsplit('.')[0]} ] || rm -rf env ; python --version ; pyenv shell {python_version} ; python --version;" if python_version is not None else ""
-            self.sh(f"mkdir -p {wd}; cd {wd}; {pyenv_cmds} [ -f env/bin/activate ] || python -m virtualenv env", no_venv=True)
-            newrem.sh("pip install -e . ; pip install -r requirements.txt", ignore_errors=True)
-
-        return newrem
-    
-    def _install(self):
-        if not self.installed:
-            # set flag first to prevent _install reentrancy
-            self.installed = True    
-            # set up remote python version
-            if self.pyenv_version is not None: install_pyenv(self, self.pyenv_version)
-
-            self.sh("rsync --help > /dev/null || sudo apt-get install -y rsync")
-
-    def sh(self, x, quiet=False, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False, pyenv_version=sentinel):
+    def sh(self, x, quiet=False, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False, pyenv_version=None):
         """
         Run a series of bash commands on this remote. This command shares the same arguments as :func:`pyfra.shell.sh`.
         """
-        self._install()
-    
         if self.ip is None:
-            return _shell.sh(x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=pyenv_version if pyenv_version is not sentinel else self.pyenv_version)
+            return _shell.sh(x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=pyenv_version)
         else:
-            return _shell._rsh(self.ip, x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=pyenv_version if pyenv_version is not sentinel else self.pyenv_version)
+            return _shell._rsh(self.ip, x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=pyenv_version)
     
     def file(self, fname) -> RemoteFile:
         """
@@ -298,25 +236,10 @@ class Remote:
             assert fname.remote == self
             return fname
 
-        self._install()
         return RemoteFile(self, _normalize_homedir(os.path.join(self.wd, fname) if self.wd is not None else fname))
 
     def __repr__(self):
         return self.ip if self.ip is not None else "127.0.0.1"
-
-    def _run_utils_cmd(self, cmd, args, kwargs):
-        # DEPRECATED
-        # TODO: use this to do something useful for experiment scheduling
-        packed = codecs.encode(pickle.dumps((cmd, args, kwargs)), "base64").decode()
-        self.sh(f"python3 -m pyfra.remote.wrapper {shlex.quote(packed)}")
-
-        tmpname = _normalize_homedir(".pyfra.result." + str(random.randint(0, 99999)))
-        _shell.rsync(self.file(".pyfra.result"), tmpname)
-        ret = _shell.fread(tmpname)
-        _shell.rm(tmpname)
-
-        self.sh("rm .pyfra.result", quiet=True, wrap=False)
-        return pickle.loads(codecs.decode(ret.encode(), "base64"))
 
     @property
     def fingerprint(self):
@@ -334,7 +257,6 @@ class Remote:
         return {
             'ip': self.ip,
             'wd': self.wd,
-            'python_version': self.pyenv_version,
         }
 
     def ls(self, x='.'):
@@ -343,6 +265,79 @@ class Remote:
     def rm(self, x, no_exists_ok=True):
         self.sh(f"cd ~; rm -rf {self.file(x).fname}", ignore_errors=no_exists_ok)
 
+
+class Env(Remote):
+    """
+    An environment is a Remote pointing to a directory that has a virtualenv and a specific version version of python installed, optionally initialized from a git repo. Since environments are also just Remotes, all methods on Remotes work on environments too (including env itself, which makes a nested environment within that invironment with no problems whatsoever).
+
+    A typical design pattern sees functions accepting remotes as argument and immediately turning it into an env that's used for the rest of the function. 
+
+    Example usage: ::
+
+        def train_model(rem, ...):
+            e = rem.env("neo_experiment", "https://github.com/EleutherAI/gpt-neo", python_version="3.8.10")
+            e.sh("do something")
+            e.sh("do something else")
+            f = some_other_thing(e, ...)
+            e.file("goose.txt").write(f.jread()["honk"])
+        
+        def some_other_thing(rem, ...):
+            # this makes an env inside the other env
+            e = rem.env("other_thing", "https://github.com/EleutherAI/thing-doer-5000", python_version="3.8.10")
+            e.sh("do something")
+            e.sh("do something else")
+
+            return e.file("output.json")
+    """
+    def __init__(self, ip=None, wd=None, git=None, branch=None, python_version="3.9.4"):
+        super().__init__(ip, wd)
+        
+        self.pyenv_version = python_version
+        self.wd = wd
+
+        # install python/pyenv
+        self._install(python_version)
+        
+
+        # pull git
+        if git is not None:
+            # TODO: make this usable
+            nonce = str(random.randint(0, 99999))
+
+            if branch is None:
+                branch_cmds = ""
+            else:
+                branch_cmds = f"git checkout {branch}; git pull origin {branch}; "
+
+            self.sh(f"{{ rm -rf ~/.tmp_git_repo.{nonce} ; git clone {git} ~/.tmp_git_repo.{nonce} ; rsync -ar --delete ~/.tmp_git_repo.{nonce}/ {wd}/ ; rm -rf ~/.tmp_git_repo.{nonce} ; cd {wd}; {branch_cmds} }}", ignore_errors=True)
+
+        # install venv
+        if wd is not None:
+            pyenv_cmds = f"[ -d env/lib/python{python_version.rsplit('.')[0]} ] || rm -rf env ; python --version ; pyenv shell {python_version} ; python --version;" if python_version is not None else ""
+            self.sh(f"mkdir -p {wd}; cd {wd}; {pyenv_cmds} [ -f env/bin/activate ] || python -m virtualenv env", no_venv=True)
+            self.sh("pip install -e . ; pip install -r requirements.txt", ignore_errors=True)
+        
+        self.sh(f"mkdir -p {wd}")
+
+    def sh(self, x, quiet=False, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False, pyenv_version=sentinel):
+        """
+        Run a series of bash commands on this remote. This command shares the same arguments as :func:`pyfra.shell.sh`.
+        """
+    
+        return super().sh(x, quiet=quiet, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=pyenv_version if pyenv_version is not sentinel else self.pyenv_version)
+
+    def _install(self, python_version):   
+        # set up remote python version
+        if python_version is not None: install_pyenv(self, python_version)
+
+        self.sh("rsync --help > /dev/null || sudo apt-get install -y rsync")
+
+    def _to_json(self):
+        return {
+            'ip': self.ip,
+            'wd': self.wd,
+            'pyenv_version': self.pyenv_version,
+        }
 
 local = Remote(wd=os.getcwd())
 
