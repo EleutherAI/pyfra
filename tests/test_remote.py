@@ -172,9 +172,25 @@ def test_fns():
 def test_remotefile_implicit_copy():
     global rem1, rem2
 
+    rem1.sh("rm *.pyfra", ignore_errors=True)
+    rem2.sh("rm *.pyfra", ignore_errors=True)
+
+    # implicit-read
     f1 = rem1.path("testfile_copy.pyfra")
     f1.write("goose")
     assert rem2.sh(f"cat {f1}") == "goose"
+
+    # implicit-write
+    f2 = rem2.path("testfile_copy2.pyfra")
+    rem1.sh(f"echo geese > {f2}")
+    assert rem2.sh(f"cat {f2}") == "geese"
+
+    # implicit both read and write
+    f3 = rem1.path("testfile_copy3.pyfra")
+    f3.write("canada goose")
+    f4 = rem1.path("testfile_copy4.pyfra")
+    assert rem2.sh(f"cat {f3} | tr [a-z] [A-Z] | tee {f4}") == "CANADA GOOSE"
+    assert rem2.sh(f"cat {f4}") == "CANADA GOOSE"
 
 
 # todo: test env w git

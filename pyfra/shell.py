@@ -34,6 +34,8 @@ def _wrap_command(x, no_venv=False, pyenv_version=None):
 def _process_remotepaths(host, cmd):
     candidates = re.findall(r"RemotePath\((.+?)\)", cmd)
 
+    rempaths = []
+
     for c in candidates:
         ob = json.loads(c)
         rem = ob["remote"] if ob["remote"] is not None else "127.0.0.1"
@@ -45,13 +47,20 @@ def _process_remotepaths(host, cmd):
             if loc_fname.startswith("/"): loc_fname = loc_fname[1:]
             loc_fname = "~/.pyfra_remote_files/" + loc_fname
 
-            copy(f"{rem}:{fname}", f"{host}:{loc_fname}")
+            copyerr = False
+            try:
+                copy(f"{rem}:{fname}", f"{host}:{loc_fname}")
+            except ShellException:
+                # if this file doesn't exist, it's probably an implicit return
+                copyerr = True
+
+            rempaths.append((f"{rem}:{fname}", f"{host}:{loc_fname}", copyerr))
 
             cmd = cmd.replace(f"RemotePath({c})", loc_fname)
         else:
             cmd = cmd.replace(f"RemotePath({c})", fname)
     
-    return cmd
+    return cmd, rempaths
 
 
 def _sh(cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False, pyenv_version=None):
@@ -115,7 +124,8 @@ def sh(cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, ignore_errors
 def _rsh(host, cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, connection_timeout=10, ignore_errors=False, no_venv=False, pyenv_version=None):
     if host is None or host == "localhost": host = "127.0.0.1"
 
-    cmd = _process_remotepaths(host, cmd)
+    # implicit-copy files from remote to local
+    cmd, rempaths = _process_remotepaths(host, cmd)
 
     if not quiet:
         # display colored message
@@ -140,7 +150,18 @@ def _rsh(host, cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, conne
     if wrap: cmd = _wrap_command(cmd, no_venv=no_venv, pyenv_version=pyenv_version)
     if wd: cmd = f"cd {wd}  > /dev/null 2>&1; {cmd}"
 
-    return _sh(f"ssh -q -oConnectTimeout={connection_timeout} -oBatchMode=yes -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -t {host} {shlex.quote(cmd)}", quiet=quiet, wrap=False, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv)
+    ret = _sh(f"ssh -q -oConnectTimeout={connection_timeout} -oBatchMode=yes -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -t {host} {shlex.quote(cmd)}", quiet=quiet, wrap=False, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv)
+
+    # implicit-copy files from local to remote
+    for remf, locf, copyerr in rempaths:
+        try:
+            copy(locf, remf)
+        except ShellException:
+            # if it errored both before and after, something is wrong
+            if copyerr:
+                raise ShellException(f"implicit-copy file {remf}/{locf} (remote/local) was neither written to nor read from!")
+
+    return ret
 
 def copy(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True, exclude=[]):
     """
