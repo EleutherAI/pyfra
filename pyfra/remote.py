@@ -47,34 +47,34 @@ def _normalize_homedir(x):
     return x
 
 
-class RemoteFile:
+class RemotePath:
     """
-    A RemoteFile represents a file somewhere on some Remote. The RemoteFile object can be used to manipulate the file.
+    A RemotePath represents a file somewhere on some Remote. The RemotePath object can be used to manipulate the file.
 
     Example usage: ::
 
         # write text
-        rem.file("goose.txt").write("honk")
+        rem.path("goose.txt").write("honk")
 
         # read text
-        print(rem.file("goose.txt").read())
+        print(rem.path("goose.txt").read())
 
         # write json
-        rem.file("goose.json").jwrite({"honk": 1})
+        rem.path("goose.json").jwrite({"honk": 1})
 
         # read json
-        print(rem.file("goose.json").jread())
+        print(rem.path("goose.json").jread())
 
         # write csv
-        rem.file("goose.csv").csvwrite([{"col1": 1, "col2": "duck"}, {"col1": 2, "col2": "goose"}])
+        rem.path("goose.csv").csvwrite([{"col1": 1, "col2": "duck"}, {"col1": 2, "col2": "goose"}])
 
         # read csv
-        print(rem.file("goose.csv").csvread())
+        print(rem.path("goose.csv").csvread())
 
         # copy stuff to/from remotes
-        rsync(rem1.file('goose.txt'), 'test1.txt')
-        rsync('test1.txt', rem2.file('goose.txt'))
-        rsync(rem2.file('goose.txt'), rem1.file('testing123.txt'))
+        copy(rem1.path('goose.txt'), 'test1.txt')
+        copy('test1.txt', rem2.path('goose.txt'))
+        copy(rem2.path('goose.txt'), rem1.path('testing123.txt'))
     """
     def __init__(self, remote, fname):
         if remote.ip == '127.0.0.1' or remote.ip is None: remote = None
@@ -82,14 +82,17 @@ class RemoteFile:
         self.remote = remote
         self.fname = fname
     
-    def __repr__(self):
+    def rsyncstr(self):
         return f"{self.remote}:{self.fname}" if self.remote is not None and self.remote.ip is not None else self.fname
-    
+
     def _to_json(self):
         return {
             'remote': self.remote.ip if self.remote is not None else None,
             'fname': self.fname,
         }
+
+    def __repr__(self):
+        return f"RemotePath({json.dumps(self._to_json())})"
     
     def read(self) -> str:
         """
@@ -100,7 +103,7 @@ class RemoteFile:
                 return fh.read()
         else:
             nonce = random.randint(0, 99999)
-            _shell.rsync(self, f".tmp.{nonce}", quiet=True)
+            _shell.copy(self, f".tmp.{nonce}", quiet=True)
             with open(f".tmp.{nonce}") as fh:
                 ret = fh.read()
                 _shell.rm(f".tmp.{nonce}")
@@ -123,10 +126,10 @@ class RemoteFile:
             with open(f".tmp.{nonce}", 'w') as fh:
                 fh.write(content)
             if append:
-                _shell.rsync(f".tmp.{nonce}", self.remote.file(f".tmp.{nonce}"), quiet=True)
+                _shell.copy(f".tmp.{nonce}", self.remote.path(f".tmp.{nonce}"), quiet=True)
                 self.remote.sh(f"cat .tmp.{nonce} >> {self.fname} && rm .tmp.{nonce}")
             else:
-                _shell.rsync(f".tmp.{nonce}", self, quiet=True)
+                _shell.copy(f".tmp.{nonce}", self, quiet=True)
             _shell.rm(f".tmp.{nonce}")
     
     def jread(self):
@@ -228,15 +231,15 @@ class Remote:
         else:
             return _shell._rsh(self.ip, x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=pyenv_version)
     
-    def file(self, fname) -> RemoteFile:
+    def path(self, fname) -> RemotePath:
         """
-        This is the main way to make a :class:`RemoteFile` object; see RemoteFile docs for more info on what they're used for.
+        This is the main way to make a :class:`RemotePath` object; see RemotePath docs for more info on what they're used for.
         """
-        if isinstance(fname, RemoteFile):
+        if isinstance(fname, RemotePath):
             assert fname.remote == self
             return fname
 
-        return RemoteFile(self, _normalize_homedir(os.path.join(self.wd, fname) if self.wd is not None else fname))
+        return RemotePath(self, _normalize_homedir(os.path.join(self.wd, fname) if self.wd is not None else fname))
 
     def __repr__(self):
         return self.ip if self.ip is not None else "127.0.0.1"
@@ -248,7 +251,7 @@ class Remote:
         """
         self.sh("if [ ! -f ~/.pyfra.fingerprint ]; then cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1 > ~/.pyfra.fingerprint; fi")
         tmpname = ".fingerprint." + str(random.randint(0, 99999))
-        _shell.rsync(self.file("~/.pyfra.fingerprint"), tmpname)
+        _shell.copy(self.path("~/.pyfra.fingerprint"), tmpname)
         ret = _shell.fread(tmpname)
         _shell.rm(tmpname)
         return ret.strip()
@@ -263,7 +266,7 @@ class Remote:
         return list(natsorted(self.sh(f"ls {x} | cat").strip().split("\n")))
 
     def rm(self, x, no_exists_ok=True):
-        self.sh(f"cd ~; rm -rf {self.file(x).fname}", ignore_errors=no_exists_ok)
+        self.sh(f"cd ~; rm -rf {self.path(x).fname}", ignore_errors=no_exists_ok)
 
 
 class Env(Remote):
@@ -279,7 +282,7 @@ class Env(Remote):
             e.sh("do something")
             e.sh("do something else")
             f = some_other_thing(e, ...)
-            e.file("goose.txt").write(f.jread()["honk"])
+            e.path("goose.txt").write(f.jread()["honk"])
         
         def some_other_thing(rem, ...):
             # this makes an env inside the other env
@@ -287,7 +290,7 @@ class Env(Remote):
             e.sh("do something")
             e.sh("do something else")
 
-            return e.file("output.json")
+            return e.path("output.json")
     """
     def __init__(self, ip=None, wd=None, git=None, branch=None, python_version="3.9.4"):
         super().__init__(ip, wd)
@@ -297,7 +300,6 @@ class Env(Remote):
 
         # install python/pyenv
         self._install(python_version)
-        
 
         # pull git
         if git is not None:
@@ -340,5 +342,3 @@ class Env(Remote):
         }
 
 local = Remote(wd=os.getcwd())
-
-file = local.file

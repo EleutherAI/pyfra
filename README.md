@@ -39,24 +39,24 @@ def run_experiment(server: str, config_file: str, some_numerical_value: int, som
 
     env = r.env("neox", "https://github.com/EleutherAI/gpt-neox")
     
-    # rsync as a function can do local-local, local-remote, and remote-remote
-    rsync(config_file, env.file("configs/my-config.yml"))
-    rsync(nas.file('some_data_file'), env.file('data/whatever'))
+    # copy as a function can do local-local, local-remote, and remote-remote
+    copy(config_file, env.path("configs/my-config.yml"))
+    copy(nas.path('some_data_file'), env.path('data/whatever'))
     
     return env.sh('python main.py')
 
 @page("Write example file and copy")
 def example():
-    rem.file("testing.txt").fwrite("hello world")
+    rem.path("testing.txt").fwrite("hello world")
     
     # tlocal files can be specified as just a string
-    rsync(rem.file('testing123.txt'), 'test1.txt')
-    rsync(rem.file('testing123.txt'), loc.file('test2.txt'))
+    copy(rem.path('testing123.txt'), 'test1.txt')
+    copy(rem.path('testing123.txt'), loc.path('test2.txt'))
 
     loc.sh('cat test1.txt')
     
-    assert loc.file('test1.txt').read() == loc.file('test2.txt').read()
-    assert loc.file('test1.txt').read() == rem.file('testing123.txt').read()
+    assert loc.path('test1.txt').read() == loc.path('test2.txt').read()
+    assert loc.path('test1.txt').read() == rem.path('testing123.txt').read()
 
     # ls as a function returns a list of files (with absolute paths) on the selected remote.
     # the returned value is displayed on the webpage.

@@ -12,12 +12,12 @@ import urllib
 from best_download import download_file
 from colorama import Fore, Style
 from natsort import natsorted
-
+from pyfra.remote import RemotePath
 
 class ShellException(Exception): pass
 
 
-__all__ = ['sh', 'rsync', 'ls', 'rm', 'curl', 'wget', 'quote']
+__all__ = ['sh', 'copy', 'ls', 'rm', 'curl', 'wget', 'quote']
 
 
 def _wrap_command(x, no_venv=False, pyenv_version=None):
@@ -116,20 +116,20 @@ def _rsh(host, cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, conne
 
     return _sh(f"ssh -q -oConnectTimeout={connection_timeout} -oBatchMode=yes -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -t {host} {shlex.quote(cmd)}", quiet=quiet, wrap=False, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv)
 
-def rsync(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True, exclude=[]):
+def copy(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True, exclude=[]):
     """
     Copies things from one place to another.
 
     Args:
-        frm (str or RemoteFile): Can be a string indicating a local path, a :class:`pyfra.remote.RemoteFile`, or a URL.
-        to (str or RemoteFile): Can be a string indicating a local path or a :class:`pyfra.remote.RemoteFile`.
+        frm (str or RemotePath): Can be a string indicating a local path, a :class:`pyfra.remote.RemotePath`, or a URL.
+        to (str or RemotePath): Can be a string indicating a local path or a :class:`pyfra.remote.RemotePath`.
         quiet (bool): Disables logging.
         connection_timeout (int): How long in seconds to give up after
         symlink_ok (bool): If frm and to are on the same machine, symlinks will be created instead of actually copying. Set to false to force copying.
         into (bool): If frm is a file, this has no effect. If frm is a directory, then into=True for frm="src" and to="dst" means "src/a" will get copied to "dst/src/a", whereas into=False means "src/a" will get copied to "dst/a".
     """
-    frm = str(frm)
-    to = str(to)
+    if isinstance(frm, RemotePath): frm = frm.rsyncstr()
+    if isinstance(to, RemotePath): to = to.rsyncstr()
 
     # copy from url
     if frm.startswith("http://") or frm.startswith("https://"):
