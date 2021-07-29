@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import *
 
-from pyfra import shell as _shell
+import pyfra.shell
 from .setup import install_pyenv
 from collections import namedtuple
 import codecs
@@ -49,7 +49,7 @@ def _normalize_homedir(x):
 
 class RemotePath:
     """
-    A RemotePath represents a file somewhere on some Remote. The RemotePath object can be used to manipulate the file.
+    A RemotePath represents a path somewhere on some Remote. The RemotePath object can be used to manipulate the file.
 
     Example usage: ::
 
@@ -103,10 +103,10 @@ class RemotePath:
                 return fh.read()
         else:
             nonce = random.randint(0, 99999)
-            _shell.copy(self, f".tmp.{nonce}", quiet=True)
+            pyfra.shell.copy(self, f".tmp.{nonce}", quiet=True)
             with open(f".tmp.{nonce}") as fh:
                 ret = fh.read()
-                _shell.rm(f".tmp.{nonce}")
+                pyfra.shell.rm(f".tmp.{nonce}")
                 return ret
     
     def write(self, content, append=False) -> str:
@@ -126,11 +126,11 @@ class RemotePath:
             with open(f".tmp.{nonce}", 'w') as fh:
                 fh.write(content)
             if append:
-                _shell.copy(f".tmp.{nonce}", self.remote.path(f".tmp.{nonce}"), quiet=True)
+                pyfra.shell.copy(f".tmp.{nonce}", self.remote.path(f".tmp.{nonce}"), quiet=True)
                 self.remote.sh(f"cat .tmp.{nonce} >> {self.fname} && rm .tmp.{nonce}")
             else:
-                _shell.copy(f".tmp.{nonce}", self, quiet=True)
-            _shell.rm(f".tmp.{nonce}")
+                pyfra.shell.copy(f".tmp.{nonce}", self, quiet=True)
+            pyfra.shell.rm(f".tmp.{nonce}")
     
     def jread(self):
         """
@@ -227,9 +227,9 @@ class Remote:
         Run a series of bash commands on this remote. This command shares the same arguments as :func:`pyfra.shell.sh`.
         """
         if self.ip is None:
-            return _shell.sh(x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=pyenv_version)
+            return pyfra.shell.sh(x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=pyenv_version)
         else:
-            return _shell._rsh(self.ip, x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=pyenv_version)
+            return pyfra.shell._rsh(self.ip, x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=pyenv_version)
     
     def path(self, fname) -> RemotePath:
         """
@@ -251,9 +251,9 @@ class Remote:
         """
         self.sh("if [ ! -f ~/.pyfra.fingerprint ]; then cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1 > ~/.pyfra.fingerprint; fi")
         tmpname = ".fingerprint." + str(random.randint(0, 99999))
-        _shell.copy(self.path("~/.pyfra.fingerprint"), tmpname)
-        ret = _shell.fread(tmpname)
-        _shell.rm(tmpname)
+        pyfra.shell.copy(self.path("~/.pyfra.fingerprint"), tmpname)
+        ret = pyfra.shell.fread(tmpname)
+        pyfra.shell.rm(tmpname)
         return ret.strip()
     
     def _to_json(self):

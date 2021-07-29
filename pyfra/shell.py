@@ -12,7 +12,7 @@ import urllib
 from best_download import download_file
 from colorama import Fore, Style
 from natsort import natsorted
-from pyfra.remote import RemotePath
+import pyfra.remote
 
 class ShellException(Exception): pass
 
@@ -128,8 +128,8 @@ def copy(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True
         symlink_ok (bool): If frm and to are on the same machine, symlinks will be created instead of actually copying. Set to false to force copying.
         into (bool): If frm is a file, this has no effect. If frm is a directory, then into=True for frm="src" and to="dst" means "src/a" will get copied to "dst/src/a", whereas into=False means "src/a" will get copied to "dst/a".
     """
-    if isinstance(frm, RemotePath): frm = frm.rsyncstr()
-    if isinstance(to, RemotePath): to = to.rsyncstr()
+    if isinstance(frm, pyfra.remote.RemotePath): frm = frm.rsyncstr()
+    if isinstance(to, pyfra.remote.RemotePath): to = to.rsyncstr()
 
     # copy from url
     if frm.startswith("http://") or frm.startswith("https://"):
