@@ -163,22 +163,32 @@ def copy(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True
         frm_host, frm_path = frm.split(":")
         to_host, to_path = to.split(":")
 
+        par_target = to_path.rsplit('/', 1)[0] if "/" in to_path else ""
+
         if to_host == frm_host:
             if symlink_ok:
                 assert not exclude, "Cannot use exclude symlink"
                 _rsh(frm_host, f"[ -d {frm_path} ] && mkdir -p {to_path}; ln -sf {symlink_frm(frm_path)} {to_path}")
             else:
-                _rsh(frm_host, f"rsync {opts} {frm_path} {to_path}")
+
+                _rsh(frm_host, (f"mkdir -p {par_target}; " if par_target else "") + f"rsync {opts} {frm_path} {to_path}")
         else:
             rsync_cmd = f"rsync {opts} {frm_path} {to}"
                 
+            # make parent dir in terget if not exists
+            if par_target: _rsh(to_host, f"mkdir -p {par_target}")
+
             sh(f"eval \"$(ssh-agent -s)\"; ssh-add ~/.ssh/id_rsa; ssh -q -oConnectTimeout={connection_timeout} -oBatchMode=yes -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -A {frm_host} {rsync_cmd | quote}", wrap=False)
     else:
+        # if to is host:path, then this gives us path; otherwise, it leaves it unchanged
+        par_target = to.split(":")[-1]
+        par_target = par_target.rsplit('/', 1)[0] if "/" in par_target else ""
+
         if symlink_ok and ":" not in frm and ":" not in to:
             assert not exclude, "Cannot use exclude symlink"
-            sh(f"[ -d {frm} ] && mkdir -p {to}; ln -sf {symlink_frm(frm)} {to}")
+            sh(f"[ -d {frm} ] && mkdir -p {par_target}; ln -sf {symlink_frm(frm)} {to}")
         else:
-            sh(f"rsync {opts} {frm} {to}", wrap=False)
+            sh((f"mkdir -p {par_target}; " if par_target else "") + f"rsync {opts} {frm} {to}", wrap=False)
 
 def ls(x='.'):
     return list(natsorted([x + '/' + fn for fn in os.listdir(x)]))
