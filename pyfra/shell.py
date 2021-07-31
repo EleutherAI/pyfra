@@ -161,7 +161,7 @@ def _rsh(host, cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, conne
 
     return ret
 
-def copy(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True, exclude=[]):
+def copy(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True, exclude=[], update_hash=True):
     """
     Copies things from one place to another.
 
@@ -173,8 +173,31 @@ def copy(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True
         symlink_ok (bool): If frm and to are on the same machine, symlinks will be created instead of actually copying. Set to false to force copying.
         into (bool): If frm is a file, this has no effect. If frm is a directory, then into=True for frm="src" and to="dst" means "src/a" will get copied to "dst/src/a", whereas into=False means "src/a" will get copied to "dst/a".
     """
+
+    # todo: implement strict hashing mode
+
+    orig_frm = frm
+    orig_to = to
+
     if isinstance(frm, pyfra.remote.RemotePath): frm = frm.rsyncstr()
     if isinstance(to, pyfra.remote.RemotePath): to = to.rsyncstr()
+
+    if isinstance(orig_to, pyfra.remote.RemotePath) and isinstance(orig_to.remote, pyfra.remote.Env) and update_hash:
+        if frm.startswith("http://") or frm.startswith("https://"):
+            fhash = frm
+        else:
+            if isinstance(orig_frm, pyfra.remote.RemotePath):
+                stat = orig_frm.stat()
+            else:
+                stat = os.stat(orig_frm)
+            fhash = [frm.split(':')[-1], stat.st_mtime, stat.st_size]
+        hash = orig_to.remote.update_hash(fhash)
+        if hash in orig_to.remote.skippable_hashes:
+            return
+    
+    def commit_state():
+        if isinstance(orig_to, pyfra.remote.RemotePath) and isinstance(orig_to.remote, pyfra.remote.Env) and update_hash:
+            to.remote.commit_state()
 
     # copy from url
     if frm.startswith("http://") or frm.startswith("https://"):
@@ -183,6 +206,8 @@ def copy(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True
             _rsh(to_host, f"curl {frm} --create-dirs -o {to}")
         else:
             wget(frm, to)
+
+        commit_state()
         return
 
     if frm[-1] == '/' and len(frm) > 1: frm = frm[:-1]
@@ -234,6 +259,9 @@ def copy(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True
             sh(f"[ -d {frm} ] && mkdir -p {par_target}; ln -sf {symlink_frm(frm)} {to}")
         else:
             sh((f"mkdir -p {par_target}; " if par_target else "") + f"rsync {opts} {frm} {to}", wrap=False)
+    
+    commit_state()
+
 
 def ls(x='.'):
     return list(natsorted([x + '/' + fn for fn in os.listdir(x)]))

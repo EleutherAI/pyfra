@@ -27,7 +27,7 @@ def ensure_supported(r):
 
 
 def install_pyenv(r, version="3.9.4"):
-    if r.sh(f"pyenv shell {version} 2> /dev/null; python --version", no_venv=True, ignore_errors=True, pyenv_version=None).strip().split(" ")[-1] == version:
+    if r.sh(f"pyenv shell {version} 2> /dev/null; python --version", no_venv=True, ignore_errors=True, pyenv_version=None, update_hash=False).strip().split(" ")[-1] == version:
         return
 
     apt(r, [
@@ -50,7 +50,7 @@ def install_pyenv(r, version="3.9.4"):
         'xz-utils',
         'zlib1g-dev',
     ])
-    r.sh("curl https://pyenv.run | bash", ignore_errors=True, pyenv_version=None)
+    r.sh("curl https://pyenv.run | bash", ignore_errors=True, pyenv_version=None, update_hash=False)
 
     payload = """
 # pyfra-managed: pyenv stuff
@@ -60,22 +60,22 @@ eval "$(pyenv init --path)"
 eval "$(pyenv init -)"
 eval "$(pyenv virtualenv-init -)"
 """
-    bashrc = r.sh("cat ~/.bashrc", pyenv_version=None)
+    bashrc = r.sh("cat ~/.bashrc", pyenv_version=None, update_hash=False)
 
     if "# pyfra-managed: pyenv stuff" not in bashrc:
-        r.sh(f"echo {payload | quote} >> ~/.bashrc", pyenv_version=None)
+        r.sh(f"echo {payload | quote} >> ~/.bashrc", pyenv_version=None, update_hash=False)
 
     # install updater
-    r.sh("git clone https://github.com/pyenv/pyenv-update.git $(pyenv root)/plugins/pyenv-update", ignore_errors=True, pyenv_version=None)
-    r.sh("pyenv update", ignore_errors=True, pyenv_version=None)
+    r.sh("git clone https://github.com/pyenv/pyenv-update.git $(pyenv root)/plugins/pyenv-update", ignore_errors=True, pyenv_version=None, update_hash=False)
+    r.sh("pyenv update", ignore_errors=True, pyenv_version=None, update_hash=False)
 
-    r.sh(f"pyenv install --verbose -s {version}", pyenv_version=None)
+    r.sh(f"pyenv install --verbose -s {version}", pyenv_version=None, update_hash=False)
 
     # make sure the versions all check out
     assert r.sh(f"python --version", no_venv=True).strip().split(" ")[-1] == version
     assert r.sh(f"python3 --version", no_venv=True).strip().split(" ")[-1] == version
-    assert version.rsplit('.', 1)[0] in r.sh("pip --version", no_venv=True)
-    assert version.rsplit('.', 1)[0] in r.sh("pip3 --version", no_venv=True)
+    assert version.rsplit('.', 1)[0] in r.sh("pip --version", no_venv=True, update_hash=False)
+    assert version.rsplit('.', 1)[0] in r.sh("pip3 --version", no_venv=True, update_hash=False)
     
-    r.sh("pip install virtualenv")
-    r.sh("virtualenv --version")
+    r.sh("pip install virtualenv", update_hash=False)
+    r.sh("virtualenv --version", update_hash=False)

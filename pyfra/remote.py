@@ -1,9 +1,11 @@
 from __future__ import annotations
+import collections
+from shutil import register_unpack_format
 from typing import *
 
 import pyfra.shell
 from .setup import install_pyenv
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 import codecs
 import pickle
 import shlex
@@ -13,6 +15,8 @@ import json
 import csv
 from natsort import natsorted
 import io
+import pathlib
+import hashlib
 
 
 sentinel = object()
@@ -45,6 +49,14 @@ def _normalize_homedir(x):
     if x[-1] == '/' and len(x) > 1: x = x[:-1]
     
     return x
+
+
+class _ObjectEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if hasattr(obj, "_to_json"):
+            return obj._to_json()
+        
+        return super().default(obj)
 
 
 class RemotePath:
@@ -122,15 +134,25 @@ class RemotePath:
             with open(os.path.expanduser(self.fname), 'a' if append else 'w') as fh:
                 fh.write(content)
         else:
+            # hash management stuff
+            hash = self.remote.update_hash("write", self.fname, content, append)
+            if hash in self.remote.skippable_hashes:
+                print("Skipping from cache")
+                return
+
+            # actully write the file
             nonce = random.randint(0, 99999)
             with open(f".tmp.{nonce}", 'w') as fh:
                 fh.write(content)
             if append:
-                pyfra.shell.copy(f".tmp.{nonce}", self.remote.path(f".tmp.{nonce}"), quiet=True)
-                self.remote.sh(f"cat .tmp.{nonce} >> {self.fname} && rm .tmp.{nonce}")
+                pyfra.shell.copy(f".tmp.{nonce}", self.remote.path(f".tmp.{nonce}"), quiet=True, update_hash=False)
+                self.remote._sh(f"cat .tmp.{nonce} >> {self.fname} && rm .tmp.{nonce}")
             else:
-                pyfra.shell.copy(f".tmp.{nonce}", self, quiet=True)
+                pyfra.shell.copy(f".tmp.{nonce}", self, quiet=True, update_hash=False)
             pyfra.shell.rm(f".tmp.{nonce}")
+
+            # commit state
+            self.remote.commit_state()
     
     def jread(self):
         """
@@ -203,7 +225,7 @@ class RemotePath:
         else:
             nonce = random.randint(0, 99999)
             payload = f"import os,json; print(json.dumps(os.stat({self.fname}))"
-            self.remote.sh(f"python -c {payload | pyfra.shell.quote} > .tmp.{nonce}", quiet=True)
+            self.remote._sh(f"python -c {payload | pyfra.shell.quote} > .tmp.{nonce}")
             with open(f".tmp.{nonce}") as fh:
                 ret = os.stat_result(json.read(fh))
                 pyfra.shell.rm(f".tmp.{nonce}")
@@ -238,7 +260,7 @@ class Remote:
 
         self._home = None
 
-    def env(self, envname, git=None, branch=None, python_version="3.9.4") -> Remote:
+    def env(self, envname, git=None, branch=None, python_version="3.9.4", disable_caching=False) -> Remote:
         """
         Args:
             envname (str): The name for the environment.
@@ -249,12 +271,13 @@ class Remote:
 
         wd = f"~/pyfra_envs/{envname}"
 
-        return Env(ip=self.ip, wd=wd, git=git, branch=branch, python_version=python_version)
+        return Env(ip=self.ip, wd=wd, git=git, branch=branch, python_version=python_version, disable_caching=disable_caching)
 
-    def sh(self, x, quiet=False, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False, pyenv_version=None):
+    def sh(self, x, quiet=False, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False, pyenv_version=None, update_hash=False):
         """
         Run a series of bash commands on this remote. This command shares the same arguments as :func:`pyfra.shell.sh`.
         """
+        assert not update_hash # for compatibility with Env
         if self.ip is None:
             return pyfra.shell.sh(x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=pyenv_version)
         else:
@@ -268,7 +291,7 @@ class Remote:
             assert fname.remote == self
             return fname
 
-        return RemotePath(self, _normalize_homedir(os.path.join(self.wd, fname) if self.wd is not None else fname))
+        return RemotePath(self, _normalize_homedir(os.path.join(self.wd, fname) if self.wd is not None else fname)).expanduser()
 
     def __repr__(self):
         return self.ip if self.ip is not None else "127.0.0.1"
@@ -327,11 +350,23 @@ class Env(Remote):
 
             return e.path("output.json")
     """
-    def __init__(self, ip=None, wd=None, git=None, branch=None, python_version="3.9.4"):
+    def __init__(self, ip=None, wd=None, git=None, branch=None, python_version="3.9.4", disable_caching=False):
         super().__init__(ip, wd)
         
         self.pyenv_version = python_version
         self.wd = wd
+        self.disable_caching = disable_caching
+
+        # this is where we store all state relating to this env
+        self.meta_dir = (self.wd if self.wd[-1] != '/' else self.wd[:-1]) + "_meta"
+
+        self.skippable_hashes = set()
+        self._populate_skippable_hashes()
+
+        # initialize pyfra hash with python version and git commit hash if we're using git
+        self.hash = self._hash(None, "init", self.wd, python_version, [git, branch] if git is not None else None)
+
+        if self.hash in self.skippable_hashes: return
 
         # install python/pyenv
         self._install(python_version)
@@ -346,22 +381,46 @@ class Env(Remote):
             else:
                 branch_cmds = f"git checkout {branch}; git pull origin {branch}; "
 
-            self.sh(f"{{ rm -rf ~/.tmp_git_repo.{nonce} ; git clone {git} ~/.tmp_git_repo.{nonce} ; rsync -ar --delete ~/.tmp_git_repo.{nonce}/ {wd}/ ; rm -rf ~/.tmp_git_repo.{nonce} ; cd {wd}; {branch_cmds} }}", ignore_errors=True)
+            self._sh(f"{{ rm -rf ~/.tmp_git_repo.{nonce} ; git clone {git} ~/.tmp_git_repo.{nonce} ; rsync -ar --delete ~/.tmp_git_repo.{nonce}/ {wd}/ ; rm -rf ~/.tmp_git_repo.{nonce} ; cd {wd}; {branch_cmds} }}", ignore_errors=True)
+
+        else:
+            # if we're not using git, we need to empty the directory, since the `git is not None` branch over-writes the directory with rsync --delete
+            self._sh(f"rm -rf {wd}; mkdir -p {wd}", pyenv_version=None)
 
         # install venv
         if wd is not None:
             pyenv_cmds = f"[ -d env/lib/python{python_version.rsplit('.')[0]} ] || rm -rf env ; python --version ; pyenv shell {python_version} ; python --version;" if python_version is not None else ""
-            self.sh(f"mkdir -p {wd}; cd {wd}; {pyenv_cmds} [ -f env/bin/activate ] || python -m virtualenv env", no_venv=True)
-            self.sh("pip install -e . ; pip install -r requirements.txt", ignore_errors=True)
-        
-        self.sh(f"mkdir -p {wd}")
+            self._sh(f"mkdir -p {wd}; cd {wd}; {pyenv_cmds} [ -f env/bin/activate ] || python -m virtualenv env", no_venv=True)
+            self._sh("pip install -e . ; pip install -r requirements.txt", ignore_errors=True)
 
-    def sh(self, x, quiet=False, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False, pyenv_version=sentinel):
+        # commit state to git
+        self._sh("git init")
+
+
+    def sh(self, x, quiet=False, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False, pyenv_version=sentinel, update_hash=True):
         """
         Run a series of bash commands on this remote. This command shares the same arguments as :func:`pyfra.shell.sh`.
         """
+
+        pyenv_version = pyenv_version if pyenv_version is not sentinel else self.pyenv_version
     
-        return super().sh(x, quiet=quiet, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=pyenv_version if pyenv_version is not sentinel else self.pyenv_version)
+        if update_hash:
+            # quiet is excluded from hash update because it doesn't affect the state of the environment or the return value
+            hash = self.update_hash("sh", x, [wrap, maxbuflen, ignore_errors, no_venv, pyenv_version])
+            if hash in self.skippable_hashes:
+                print("Skipping from cache")
+                return self.retval_of(hash)
+
+        ret = super().sh(x, quiet=quiet, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=pyenv_version)
+
+        if update_hash:
+            self.commit_state(retval=ret)
+
+        return ret
+    
+    def _sh(self, x, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False, pyenv_version=sentinel):
+        # internal _sh that is silent and does not update the hash
+        return self.sh(x, quiet=True, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=pyenv_version, update_hash=False)
 
     def _install(self, python_version):   
         # set up remote python version
@@ -376,5 +435,79 @@ class Env(Remote):
             'wd': self.wd,
             'pyenv_version': self.pyenv_version,
         }
+    
+    ## State management
+
+    @classmethod
+    def _hash(cls, *args, **kwargs):
+        # arg order: prev_hash, commit_type, ...
+        return hashlib.sha256(json.dumps([args, kwargs], sort_keys=True, cls=_ObjectEncoder).encode()).hexdigest()
+
+    def update_hash(self, method_name, *args, **kwargs):
+        # update hash
+        self.hash = self._hash(self.hash, method_name, *args, **kwargs)
+        return self.hash
+
+    def commit_state(self, retval=None):
+        """ update hash, commit all small files and track large files """
+        print("New hash:", self.hash)
+
+        if self.disable_caching:
+            return
+
+        # todo: make more efficient by using less sh calls and stat calls
+
+        # find -size is exclusive in both directions
+        self._sh("git add $(git status --porcelain --ignore-submodules | awk '{ l=length($0); s=substr($0,4,l-1); print s}' | xargs -I{} find {} -size -100000000c) && git commit -m 'state commit (pyfra)'", ignore_errors=True)
+
+        big_files = self._sh("git status --porcelain --ignore-submodules | awk '{ l=length($0); s=substr($0,4,l-1); print s}' | xargs -I{} find {} -size +99999999c").strip().split("\n")
+        if big_files == ['']: big_files = []
+
+        print(big_files)
+
+        # from https://stackoverflow.com/a/58684090 
+        def _stat_to_json(s_obj) -> dict:
+            return {k: getattr(s_obj, k) for k in dir(s_obj) if k.startswith('st_')}
+
+        self.path(".git/pyfra_commits.jsonl").write(json.dumps({
+            "hash": self.hash,
+            "git_hash": self._sh("git rev-parse HEAD").strip(),
+            "big_files": [
+                {
+                    "path": f,
+                    "stat": _stat_to_json(self.path(f).stat()), # todo: replace after we have RemotePath conforming to Path interface
+                } for f in big_files
+            ],
+            "retval": retval,
+        }) + "\n", append=True)
+
+    def retval_of(self, hash):
+        return None # todo: implement this
+    
+    def _populate_skippable_hashes(self):
+        if self.disable_caching:
+            return
+
+        # populate skippable hashes
+
+        actual_modification_date = {}
+
+        self.skippable_hashes = set()
+
+        try:
+            for line in self.path(".git/pyfra_commits.jsonl").read().strip().split("\n"):
+                ob = json.loads(line)
+                githash = ob["git_hash"]
+
+                for f in ob["big_files"]:
+                    if f["path"] not in actual_modification_date:
+                        actual_modification_date[f["path"]] = self.path(f["path"]).stat().st_mtime
+                    
+                    if actual_modification_date[f["path"]] != f["stat"]["st_mtime"]:
+                        return
+
+                self.skippable_hashes.add(ob["hash"])
+        except FileNotFoundError:
+            pass
 
 local = Remote(wd=os.getcwd())
