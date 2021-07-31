@@ -77,7 +77,7 @@ class RemotePath:
         copy(rem2.path('goose.txt'), rem1.path('testing123.txt'))
     """
     def __init__(self, remote, fname):
-        if remote.ip == '127.0.0.1' or remote.ip is None: remote = None
+        if remote is None or remote.ip == '127.0.0.1' or remote.ip is None: remote = None
 
         self.remote = remote
         self.fname = fname
@@ -209,6 +209,18 @@ class RemotePath:
                 pyfra.shell.rm(f".tmp.{nonce}")
                 return ret
 
+    def expanduser(self) -> RemotePath:
+        """
+        Return a copy of this path with the home directory expanded.
+        """
+        if self.remote is None:
+            return RemotePath(None, os.path.expanduser(self.fname))
+        else:
+            homedir = self.remote.home()
+
+            # todo: be more careful with this replace
+            return RemotePath(self.remote, os.path.expanduser(self.fname).replace("~", homedir))
+
 
 class Remote:
     def __init__(self, ip=None, wd=None):
@@ -223,6 +235,8 @@ class Remote:
         self.ip = ip
 
         self.wd = _normalize_homedir(wd) if wd is not None else "~"
+
+        self._home = None
 
     def env(self, envname, git=None, branch=None, python_version="3.9.4") -> Remote:
         """
@@ -282,6 +296,12 @@ class Remote:
 
     def rm(self, x, no_exists_ok=True):
         self.sh(f"cd ~; rm -rf {self.path(x).fname}", ignore_errors=no_exists_ok)
+     
+    def home(self):
+        if self._home is None:
+            self._home = self.sh("echo $HOME", quiet=True).strip()
+        
+        return self._home
 
 
 class Env(Remote):
@@ -347,7 +367,8 @@ class Env(Remote):
         # set up remote python version
         if python_version is not None: install_pyenv(self, python_version)
 
-        self.sh("rsync --help > /dev/null || sudo apt-get install -y rsync")
+        # install rsync for copying files
+        self._sh("rsync --help > /dev/null || ( sudo apt-get update && sudo apt-get install -y rsync )")
 
     def _to_json(self):
         return {

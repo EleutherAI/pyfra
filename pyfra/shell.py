@@ -70,8 +70,6 @@ def _sh(cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, ignore_error
 
     cmd = f"cd {wd} > /dev/null 2>&1; {cmd}"
 
-    print(cmd)
-
     p = subprocess.Popen(cmd, shell=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
@@ -196,7 +194,7 @@ def copy(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True
         opts = "-e \"ssh -o StrictHostKeyChecking=no\" -arL --info=progress2"
     
     for ex in exclude:
-        opts += f" --exclude {ex | quote}"
+        opts += f" --exclude {ex | pyfra.shell.quote}"
     
     def symlink_frm(frm):
         # rsync behavior is to copy the contents of frm into to if frm ends with a /
