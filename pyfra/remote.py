@@ -193,6 +193,21 @@ class RemotePath:
         
         fh.seek(0)
         self.write(fh.read())
+    
+    def stat(self) -> os.stat_result:
+        """
+        Stat a remote file
+        """
+        if self.remote is None:
+            return os.stat(self.fname)
+        else:
+            nonce = random.randint(0, 99999)
+            payload = f"import os,json; print(json.dumps(os.stat({self.fname}))"
+            self.remote.sh(f"python -c {payload | pyfra.shell.quote} > .tmp.{nonce}", quiet=True)
+            with open(f".tmp.{nonce}") as fh:
+                ret = os.stat_result(json.read(fh))
+                pyfra.shell.rm(f".tmp.{nonce}")
+                return ret
 
 
 class Remote:
