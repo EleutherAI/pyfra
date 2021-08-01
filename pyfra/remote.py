@@ -13,6 +13,7 @@ import json
 import csv
 from natsort import natsorted
 import io
+import pathlib
 
 
 sentinel = object()
@@ -194,20 +195,34 @@ class RemotePath:
         fh.seek(0)
         self.write(fh.read())
     
+    def _remote_payload(self, name, *args, **kwargs):
+        """
+        Run an arbitrary Path.* function remotely and return the result.
+        Restricted to os rather than arbitrary eval for security reasons.
+        """
+        assert all(x in ".abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ" for x in name)
+
+        if self.remote is None:
+            fn = pathlib.Path(self.fname)
+            for k in name.split("."):
+                fn = getattr(fn, k)
+            return fn(*args, **kwargs)
+        else:
+            payload = f"import pathlib,json; print(json.dumps(pathlib.Path({repr(self.fname)}).expanduser().{name}(*{args}, **{kwargs})))"
+            ret = self.remote.sh(f"python -c {payload | pyfra.shell.quote}", quiet=True)
+            return json.loads(ret)
+
     def stat(self) -> os.stat_result:
         """
         Stat a remote file
         """
-        if self.remote is None:
-            return os.stat(self.fname)
-        else:
-            nonce = random.randint(0, 99999)
-            payload = f"import os,json; print(json.dumps(os.stat({self.fname}))"
-            self.remote.sh(f"python -c {payload | pyfra.shell.quote} > .tmp.{nonce}", quiet=True)
-            with open(f".tmp.{nonce}") as fh:
-                ret = os.stat_result(json.read(fh))
-                pyfra.shell.rm(f".tmp.{nonce}")
-                return ret
+        return os.stat_result(self._remote_payload("stat"))
+    
+    def exists(self) -> bool:
+        """
+        Check if this file exists
+        """
+        return self._remote_payload("exists")
 
     def expanduser(self) -> RemotePath:
         """
@@ -376,5 +391,6 @@ class Env(Remote):
             'wd': self.wd,
             'pyenv_version': self.pyenv_version,
         }
+
 
 local = Remote(wd=os.getcwd())
