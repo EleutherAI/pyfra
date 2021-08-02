@@ -49,7 +49,7 @@ def _process_remotepaths(host, cmd):
 
             copyerr = False
             try:
-                copy(pyfra.remote.Remote(rem).path(fname), pyfra.remote.Remote(host).path(loc_fname))
+                copy(pyfra.remote.Remote(rem).path(fname), pyfra.remote.Remote(host).path(loc_fname), into=False)
             except ShellException:
                 # if this file doesn't exist, it's probably an implicit return
                 copyerr = True
@@ -139,8 +139,8 @@ def _rsh(host, cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, conne
         else:
             wd_display = "~"
         hoststr += f"{Style.RESET_ALL}:{dir_style}{wd_display}{Style.RESET_ALL}"
-        cmd_fmt = cmd.strip().replace('\n', f'\n{ " " * (len(str(host)) + 1 + len(wd_display))}{sep_style}> {Style.RESET_ALL}{cmd_style} ')
-        print(f"{host_style}{hoststr}{Style.RESET_ALL}{sep_style}$ {Style.RESET_ALL}{cmd_style}{cmd_fmt}{Style.RESET_ALL}")
+        cmd_fmt = cmd.strip().replace('\n', f'\n{ " " * (len(str(host)) + 3 + len(wd_display))}{sep_style}>{Style.RESET_ALL}{cmd_style} ')
+        print(f"{Style.BRIGHT}{Fore.RED}*{Style.RESET_ALL} {host_style}{hoststr}{Style.RESET_ALL}{sep_style}$ {Style.RESET_ALL}{cmd_style}{cmd_fmt}{Style.RESET_ALL}")
     
     if host == "127.0.0.1":
         return _sh(cmd, quiet, wd, wrap, maxbuflen, ignore_errors, no_venv, pyenv_version)
@@ -173,9 +173,10 @@ def copy(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True
         symlink_ok (bool): If frm and to are on the same machine, symlinks will be created instead of actually copying. Set to false to force copying.
         into (bool): If frm is a file, this has no effect. If frm is a directory, then into=True for frm="src" and to="dst" means "src/a" will get copied to "dst/src/a", whereas into=False means "src/a" will get copied to "dst/a".
     """
-    print(frm,to)
     if isinstance(frm, pyfra.remote.RemotePath): frm = frm.rsyncstr()
     if isinstance(to, pyfra.remote.RemotePath): to = to.rsyncstr()
+
+    print(f"{Style.BRIGHT}{Fore.RED}*{Style.RESET_ALL} Copying {Style.BRIGHT}{frm} {Style.RESET_ALL}to {Style.BRIGHT}{to}{Style.RESET_ALL}")
 
     # copy from url
     if frm.startswith("http://") or frm.startswith("https://"):
@@ -217,7 +218,8 @@ def copy(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True
                 _rsh(frm_host, f"[ -d {frm_path} ] && mkdir -p {to_path}; ln -sf {symlink_frm(frm_path)} {to_path}", quiet=True)
             else:
 
-                _rsh(frm_host, (f"mkdir -p {par_target}; " if par_target else "") + f"rsync {opts} {frm_path} {to_path}")
+                if par_target: _rsh(to_host, f"mkdir -p {par_target}", quiet=True)
+                _rsh(frm_host, f"rsync {opts} {frm_path} {to_path}", quiet=True)
         else:
             rsync_cmd = f"rsync {opts} {frm_path} {to}"
                 
