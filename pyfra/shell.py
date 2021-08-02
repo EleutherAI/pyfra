@@ -42,19 +42,19 @@ def _process_remotepaths(host, cmd):
         fname = ob["fname"]
 
         if rem != host:
-            loc_fname = rem.replace(".", "_").replace("@", "_")
+            loc_fname = rem.replace(".", "_").replace("@", "_")+"_"+fname.split("/")[-1]
             if loc_fname.startswith("~/"): loc_fname = loc_fname[2:]
             if loc_fname.startswith("/"): loc_fname = loc_fname[1:]
             loc_fname = "~/.pyfra_remote_files/" + loc_fname
 
             copyerr = False
             try:
-                copy(f"{rem}:{fname}", f"{host}:{loc_fname}")
+                copy(pyfra.remote.Remote(rem).path(fname), pyfra.remote.Remote(host).path(loc_fname))
             except ShellException:
                 # if this file doesn't exist, it's probably an implicit return
                 copyerr = True
 
-            rempaths.append((f"{rem}:{fname}", f"{host}:{loc_fname}", copyerr))
+            rempaths.append((pyfra.remote.Remote(rem).path(fname), pyfra.remote.Remote(host).path(loc_fname), copyerr))
 
             cmd = cmd.replace(f"RemotePath({c})", loc_fname)
         else:
@@ -173,6 +173,7 @@ def copy(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True
         symlink_ok (bool): If frm and to are on the same machine, symlinks will be created instead of actually copying. Set to false to force copying.
         into (bool): If frm is a file, this has no effect. If frm is a directory, then into=True for frm="src" and to="dst" means "src/a" will get copied to "dst/src/a", whereas into=False means "src/a" will get copied to "dst/a".
     """
+    print(frm,to)
     if isinstance(frm, pyfra.remote.RemotePath): frm = frm.rsyncstr()
     if isinstance(to, pyfra.remote.RemotePath): to = to.rsyncstr()
 

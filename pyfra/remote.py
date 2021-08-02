@@ -222,7 +222,11 @@ class RemotePath:
         """
         Check if this file exists
         """
-        return self._remote_payload("exists")
+        try:
+            return self._remote_payload("exists")
+        except pyfra.shell.ShellException:
+            # if we can't connect to the remote, the file does not exist
+            return False
 
     def expanduser(self) -> RemotePath:
         """
@@ -235,6 +239,9 @@ class RemotePath:
 
             # todo: be more careful with this replace
             return RemotePath(self.remote, os.path.expanduser(self.fname).replace("~", homedir))
+    
+    def __div__(self, other):
+        return RemotePath(self.remote, os.path.join(self.fname, other))
 
 
 class Remote:
@@ -383,7 +390,7 @@ class Env(Remote):
         if python_version is not None: install_pyenv(self, python_version)
 
         # install rsync for copying files
-        self._sh("rsync --help > /dev/null || ( sudo apt-get update && sudo apt-get install -y rsync )")
+        self.sh("rsync --help > /dev/null || ( sudo apt-get update && sudo apt-get install -y rsync )")
 
     def _to_json(self):
         return {

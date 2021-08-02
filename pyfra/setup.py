@@ -1,4 +1,4 @@
-from pyfra.utils.misc import once
+import pyfra.utils.misc
 from pyfra.shell import *
 from functools import wraps, partial
 
@@ -21,7 +21,7 @@ def ensure_supported(r):
             for ver in supported
         ])
 
-    once(partial(_f, r), name="ensure_supported;" + r.fingerprint)()
+    pyfra.utils.misc.once(partial(_f, r), name="ensure_supported;" + r.fingerprint)()
 
 ## things to install
 

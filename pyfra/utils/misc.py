@@ -20,7 +20,7 @@ class _ObjectEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
-def once(sentinel=None, *, name=None, version=0):
+def once(sentinel=None, *, name=None, v=0, backup=None):
     """ Only run a function once, saving its return value to disk. Args must be json-encodable. """
 
     def wrapper(fn):
@@ -31,13 +31,14 @@ def once(sentinel=None, *, name=None, version=0):
             jsonobj = json.dumps([args, kwargs], sort_keys=True, cls=_ObjectEncoder)
             arghash = hashlib.sha256(jsonobj.encode()).hexdigest()
 
-            print("@once:", fname, args, kwargs, arghash, version)
+            print("@once:", fname, args, kwargs, arghash, v)
 
-            key = f"once-{fname}-{arghash}-{version}-seen"
+            key = f"once-{fname}-{arghash}-{v}-seen"
             if key in state: return state[key]
             
             ret = fn(*args, **kwargs)
-            print("FINISHED @once:", fname, args, kwargs, arghash, version)
+            
+            print("FINISHED @once:", fname, args, kwargs, arghash, v)
             state[key] = ret
             state.commit()
             return ret

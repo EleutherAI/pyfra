@@ -28,7 +28,7 @@ def split_data(rem, input, shuffle=False):
 
     return rem.path("output_split")
 
-@once(version=1)
+@once(v=1)
 def tokenize(rem_tok, rem_gcp, input, dataset_name, dataset_bucket):
     if isinstance(dataset_bucket, str): dataset_bucket = [dataset_bucket]
     for bucket in dataset_bucket: rem_gcp.sh(f"gsutil -m rm -r {trim_slash(bucket)}/{dataset_name}", ignore_errors=True)
