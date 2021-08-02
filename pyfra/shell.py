@@ -176,7 +176,7 @@ def copy(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True
     if isinstance(frm, pyfra.remote.RemotePath): frm = frm.rsyncstr()
     if isinstance(to, pyfra.remote.RemotePath): to = to.rsyncstr()
 
-    print(f"{Style.BRIGHT}{Fore.RED}*{Style.RESET_ALL} Copying {Style.BRIGHT}{frm} {Style.RESET_ALL}to {Style.BRIGHT}{to}{Style.RESET_ALL}")
+    if not quiet: print(f"{Style.BRIGHT}{Fore.RED}*{Style.RESET_ALL} Copying {Style.BRIGHT}{frm} {Style.RESET_ALL}to {Style.BRIGHT}{to}{Style.RESET_ALL}")
 
     # copy from url
     if frm.startswith("http://") or frm.startswith("https://"):
