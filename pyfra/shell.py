@@ -214,7 +214,7 @@ def copy(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True
         if to_host == frm_host:
             if symlink_ok:
                 assert not exclude, "Cannot use exclude symlink"
-                _rsh(frm_host, f"[ -d {frm_path} ] && mkdir -p {to_path}; ln -sf {symlink_frm(frm_path)} {to_path}")
+                _rsh(frm_host, f"[ -d {frm_path} ] && mkdir -p {to_path}; ln -sf {symlink_frm(frm_path)} {to_path}", quiet=True)
             else:
 
                 _rsh(frm_host, (f"mkdir -p {par_target}; " if par_target else "") + f"rsync {opts} {frm_path} {to_path}")
@@ -222,9 +222,9 @@ def copy(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True
             rsync_cmd = f"rsync {opts} {frm_path} {to}"
                 
             # make parent dir in terget if not exists
-            if par_target: _rsh(to_host, f"mkdir -p {par_target}")
+            if par_target: _rsh(to_host, f"mkdir -p {par_target}", quiet=True)
 
-            sh(f"eval \"$(ssh-agent -s)\"; ssh-add ~/.ssh/id_rsa; ssh -q -oConnectTimeout={connection_timeout} -oBatchMode=yes -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -A {frm_host} {rsync_cmd | quote}", wrap=False)
+            sh(f"eval \"$(ssh-agent -s)\"; ssh-add ~/.ssh/id_rsa; ssh -q -oConnectTimeout={connection_timeout} -oBatchMode=yes -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -A {frm_host} {rsync_cmd | quote}", wrap=False, quiet=True)
     else:
         # if to is host:path, then this gives us path; otherwise, it leaves it unchanged
         par_target = to.split(":")[-1]
@@ -232,9 +232,9 @@ def copy(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True
 
         if symlink_ok and ":" not in frm and ":" not in to:
             assert not exclude, "Cannot use exclude symlink"
-            sh(f"[ -d {frm} ] && mkdir -p {par_target}; ln -sf {symlink_frm(frm)} {to}")
+            sh(f"[ -d {frm} ] && mkdir -p {par_target}; ln -sf {symlink_frm(frm)} {to}", quiet=True)
         else:
-            sh((f"mkdir -p {par_target}; " if par_target else "") + f"rsync {opts} {frm} {to}", wrap=False)
+            sh((f"mkdir -p {par_target}; " if par_target else "") + f"rsync {opts} {frm} {to}", wrap=False, quiet=True)
 
 def ls(x='.'):
     return list(natsorted([x + '/' + fn for fn in os.listdir(x)]))

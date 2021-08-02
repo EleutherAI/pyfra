@@ -128,7 +128,7 @@ class RemotePath:
                 fh.write(content)
             if append:
                 pyfra.shell.copy(f".tmp.{nonce}", self.remote.path(f".tmp.{nonce}"), quiet=True)
-                self.remote.sh(f"cat .tmp.{nonce} >> {self.fname} && rm .tmp.{nonce}")
+                self.remote.sh(f"cat .tmp.{nonce} >> {self.fname} && rm .tmp.{nonce}", quiet=True)
             else:
                 pyfra.shell.copy(f".tmp.{nonce}", self, quiet=True)
             pyfra.shell.rm(f".tmp.{nonce}")
@@ -300,7 +300,7 @@ class Remote:
         """
         A unique string for the server that this Remote is pointing to. 
         """
-        self.sh("if [ ! -f ~/.pyfra.fingerprint ]; then cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1 > ~/.pyfra.fingerprint; fi")
+        self.sh("if [ ! -f ~/.pyfra.fingerprint ]; then cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1 > ~/.pyfra.fingerprint; fi", quiet=True)
         tmpname = ".fingerprint." + str(random.randint(0, 99999))
         pyfra.shell.copy(self.path("~/.pyfra.fingerprint"), tmpname)
         ret = pyfra.shell.fread(tmpname)
@@ -368,13 +368,13 @@ class Env(Remote):
             else:
                 branch_cmds = f"git checkout {branch}; git pull origin {branch}; "
 
-            self.sh(f"{{ rm -rf ~/.tmp_git_repo.{nonce} ; git clone {git} ~/.tmp_git_repo.{nonce} ; rsync -ar --delete ~/.tmp_git_repo.{nonce}/ {wd}/ ; rm -rf ~/.tmp_git_repo.{nonce} ; cd {wd}; {branch_cmds} }}", ignore_errors=True)
+            self.sh(f"{{ rm -rf ~/.tmp_git_repo.{nonce} ; git clone {git} ~/.tmp_git_repo.{nonce} ; rsync -ar --delete ~/.tmp_git_repo.{nonce}/ {wd}/ ; rm -rf ~/.tmp_git_repo.{nonce} ; cd {wd}; {branch_cmds} }}", ignore_errors=True, quiet=True)
 
         # install venv
         if wd is not None:
             pyenv_cmds = f"[ -d env/lib/python{python_version.rsplit('.')[0]} ] || rm -rf env ; python --version ; pyenv shell {python_version} ; python --version;" if python_version is not None else ""
-            self.sh(f"mkdir -p {wd}; cd {wd}; {pyenv_cmds} [ -f env/bin/activate ] || python -m virtualenv env", no_venv=True)
-            self.sh("pip install -e . ; pip install -r requirements.txt", ignore_errors=True)
+            self.sh(f"mkdir -p {wd}; cd {wd}; {pyenv_cmds} [ -f env/bin/activate ] || python -m virtualenv env", no_venv=True, quiet=True)
+            self.sh("pip install -e . ; pip install -r requirements.txt", ignore_errors=True, quiet=True)
         
         self.sh(f"mkdir -p {wd}")
 
@@ -390,7 +390,7 @@ class Env(Remote):
         if python_version is not None: install_pyenv(self, python_version)
 
         # install rsync for copying files
-        self.sh("rsync --help > /dev/null || ( sudo apt-get update && sudo apt-get install -y rsync )")
+        self.sh("rsync --help > /dev/null || ( sudo apt-get update && sudo apt-get install -y rsync )", quiet=True)
 
     def _to_json(self):
         return {
