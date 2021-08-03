@@ -200,7 +200,7 @@ class RemotePath:
         Run an arbitrary Path.* function remotely and return the result.
         Restricted to os rather than arbitrary eval for security reasons.
         """
-        assert all(x in ".abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ" for x in name)
+        assert all(x in "_.abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ" for x in name)
 
         if self.remote is None:
             fn = pathlib.Path(self.fname)
@@ -227,6 +227,12 @@ class RemotePath:
         except pyfra.shell.ShellException:
             # if we can't connect to the remote, the file does not exist
             return False
+    
+    def is_dir(self) -> bool:
+        """
+        Check if this file exists
+        """
+        return self._remote_payload("is_dir")
 
     def expanduser(self) -> RemotePath:
         """
