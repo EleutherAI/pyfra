@@ -14,6 +14,7 @@ import csv
 from natsort import natsorted
 import io
 import pathlib
+from yaspin import yaspin
 
 
 sentinel = object()
@@ -356,33 +357,45 @@ class Env(Remote):
             return e.path("output.json")
     """
     def __init__(self, ip=None, wd=None, git=None, branch=None, python_version="3.9.4"):
-        super().__init__(ip, wd)
-        
-        self.pyenv_version = python_version
-        self.wd = wd
+        with yaspin(text="Loading", color="white") as spinner:
+            spinner.text = f"[{ip}:{wd}] Creating Env" 
+            super().__init__(ip, wd)
+            
+            self.pyenv_version = python_version
+            self.wd = wd
 
-        # install python/pyenv
-        self._install(python_version)
+            spinner.text = f"[{ip}:{wd}] Installing python in env" 
+            # install python/pyenv
+            with spinner.hidden():
+                self._install(python_version)
 
-        # pull git
-        if git is not None:
-            # TODO: make this usable
-            nonce = str(random.randint(0, 99999))
+            self.sh(f"mkdir -p {wd}", no_venv=True, quiet=True)
 
-            if branch is None:
-                branch_cmds = ""
-            else:
-                branch_cmds = f"git checkout {branch}; git pull origin {branch}; "
+            # pull git
+            if git is not None:
+                spinner.text = f"[{ip}:{wd}] Cloning from git repo" 
+                # TODO: make this usable
+                nonce = str(random.randint(0, 99999))
 
-            self.sh(f"{{ rm -rf ~/.tmp_git_repo.{nonce} ; git clone {git} ~/.tmp_git_repo.{nonce} ; rsync -ar --delete ~/.tmp_git_repo.{nonce}/ {wd}/ ; rm -rf ~/.tmp_git_repo.{nonce} ; cd {wd}; {branch_cmds} }}", ignore_errors=True, quiet=True)
+                if branch is None:
+                    branch_cmds = ""
+                else:
+                    branch_cmds = f"git checkout {branch}; git pull origin {branch}; "
 
-        # install venv
-        if wd is not None:
-            pyenv_cmds = f"[ -d env/lib/python{python_version.rsplit('.')[0]} ] || rm -rf env ; python --version ; pyenv shell {python_version} ; python --version;" if python_version is not None else ""
-            self.sh(f"mkdir -p {wd}; cd {wd}; {pyenv_cmds} [ -f env/bin/activate ] || python -m virtualenv env", no_venv=True, quiet=True)
-            self.sh("pip install -e . ; pip install -r requirements.txt", ignore_errors=True, quiet=True)
-        
-        self.sh(f"mkdir -p {wd}", no_venv=True, quiet=True)
+                self.sh(f"{{ rm -rf ~/.tmp_git_repo.{nonce} ; git clone {git} ~/.tmp_git_repo.{nonce} ; rsync -ar --delete ~/.tmp_git_repo.{nonce}/ {wd}/ ; rm -rf ~/.tmp_git_repo.{nonce} ; cd {wd}; {branch_cmds} }}", ignore_errors=True, quiet=True)
+
+            # install venv
+            if wd is not None:
+                spinner.text = f"[{ip}:{wd}] Creating virtualenv" 
+                pyenv_cmds = f"[ -d env/lib/python{python_version.rsplit('.')[0]} ] || rm -rf env ; python --version ; pyenv shell {python_version} ; python --version;" if python_version is not None else ""
+                self.sh(f"mkdir -p {wd}; cd {wd}; {pyenv_cmds} [ -f env/bin/activate ] || python -m virtualenv env", no_venv=True, quiet=True)
+                spinner.text = f"[{ip}:{wd}] Installing requirements" 
+                self.sh("pip install -e . ; pip install -r requirements.txt", ignore_errors=True, quiet=True)
+            
+            spinner.text = f"[{ip}:{wd}] Env created" 
+            spinner.color = "green"
+            spinner.ok("OK ")
+            
 
     def sh(self, x, quiet=False, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False, pyenv_version=sentinel):
         """
