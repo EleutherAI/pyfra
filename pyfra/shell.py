@@ -236,7 +236,8 @@ def copy(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True
             assert not exclude, "Cannot use exclude symlink"
             sh(f"[ -d {frm} ] && mkdir -p {par_target}; ln -sf {symlink_frm(frm)} {to}", quiet=True)
         else:
-            sh((f"mkdir -p {par_target}; " if par_target else "") + f"rsync {opts} {frm} {to}", wrap=False, quiet=True)
+            if ":" in to: _rsh(to.split(":")[0], f"mkdir -p {par_target}", quiet=True)
+            sh((f"mkdir -p {par_target}; " if par_target and ":" in frm else "") + f"rsync {opts} {frm} {to}", wrap=False, quiet=False)
 
 def ls(x='.'):
     return list(natsorted([x + '/' + fn for fn in os.listdir(x)]))
