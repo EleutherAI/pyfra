@@ -1,5 +1,5 @@
 import pyfra.utils.misc
-from pyfra.shell import *
+import pyfra.shell
 from functools import wraps, partial
 
 
@@ -63,7 +63,7 @@ eval "$(pyenv virtualenv-init -)"
     bashrc = r.sh("cat ~/.bashrc", pyenv_version=None)
 
     if "# pyfra-managed: pyenv stuff" not in bashrc:
-        r.sh(f"echo {payload | quote} >> ~/.bashrc", pyenv_version=None)
+        r.sh(f"echo {payload | pyfra.shell.quote} >> ~/.bashrc", pyenv_version=None)
 
     # install updater
     r.sh("git clone https://github.com/pyenv/pyenv-update.git $(pyenv root)/plugins/pyenv-update", ignore_errors=True, pyenv_version=None)

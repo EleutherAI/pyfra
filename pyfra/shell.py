@@ -16,6 +16,7 @@ from natsort import natsorted
 import pyfra.remote
 import re
 
+
 class ShellException(Exception): pass
 
 
@@ -49,7 +50,10 @@ def _process_remotepaths(host, cmd):
 
             copyerr = False
             try:
-                copy(pyfra.remote.Remote(rem).path(fname), pyfra.remote.Remote(host).path(loc_fname), into=False)
+                frm = pyfra.remote.Remote(rem).path(fname)
+
+                # we want to copy dirs into, but into doesnt work with files
+                copy(frm, pyfra.remote.Remote(host).path(loc_fname), into=not frm.is_dir())
             except ShellException:
                 # if this file doesn't exist, it's probably an implicit return
                 copyerr = True
