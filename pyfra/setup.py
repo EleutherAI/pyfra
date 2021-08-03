@@ -1,5 +1,5 @@
-from pyfra.utils.misc import once
-from pyfra.shell import *
+import pyfra.utils.misc
+import pyfra.shell
 from functools import wraps, partial
 
 
@@ -21,13 +21,13 @@ def ensure_supported(r):
             for ver in supported
         ])
 
-    once(partial(_f, r), name="ensure_supported;" + r.fingerprint)()
+    pyfra.utils.misc.once(partial(_f, r), name="ensure_supported;" + r.fingerprint)()
 
 ## things to install
 
 
 def install_pyenv(r, version="3.9.4"):
-    if r.sh(f"pyenv shell {version} 2> /dev/null; python --version", no_venv=True, ignore_errors=True, pyenv_version=None, update_hash=False).strip().split(" ")[-1] == version:
+    if r.sh(f"pyenv shell {version} 2> /dev/null; python --version", no_venv=True, ignore_errors=True, pyenv_version=None, update_hash=False, quiet=True).strip().split(" ")[-1] == version:
         return
 
     apt(r, [
@@ -63,7 +63,7 @@ eval "$(pyenv virtualenv-init -)"
     bashrc = r.sh("cat ~/.bashrc", pyenv_version=None, update_hash=False)
 
     if "# pyfra-managed: pyenv stuff" not in bashrc:
-        r.sh(f"echo {payload | quote} >> ~/.bashrc", pyenv_version=None, update_hash=False)
+        r.sh(f"echo {payload | pyfra.shell.quote} >> ~/.bashrc", pyenv_version=None, update_hash=False)
 
     # install updater
     r.sh("git clone https://github.com/pyenv/pyenv-update.git $(pyenv root)/plugins/pyenv-update", ignore_errors=True, pyenv_version=None, update_hash=False)

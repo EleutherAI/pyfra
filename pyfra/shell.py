@@ -16,6 +16,7 @@ from natsort import natsorted
 import pyfra.remote
 import re
 
+
 class ShellException(Exception): pass
 
 
@@ -42,19 +43,22 @@ def _process_remotepaths(host, cmd):
         fname = ob["fname"]
 
         if rem != host:
-            loc_fname = rem.replace(".", "_").replace("@", "_")
+            loc_fname = rem.replace(".", "_").replace("@", "_")+"_"+fname.split("/")[-1]
             if loc_fname.startswith("~/"): loc_fname = loc_fname[2:]
             if loc_fname.startswith("/"): loc_fname = loc_fname[1:]
             loc_fname = "~/.pyfra_remote_files/" + loc_fname
 
             copyerr = False
             try:
-                copy(f"{rem}:{fname}", f"{host}:{loc_fname}")
+                frm = pyfra.remote.Remote(rem).path(fname)
+
+                # we want to copy dirs into, but into doesnt work with files
+                copy(frm, pyfra.remote.Remote(host).path(loc_fname), into=not frm.is_dir())
             except ShellException:
                 # if this file doesn't exist, it's probably an implicit return
                 copyerr = True
 
-            rempaths.append((f"{rem}:{fname}", f"{host}:{loc_fname}", copyerr))
+            rempaths.append((pyfra.remote.Remote(rem).path(fname), pyfra.remote.Remote(host).path(loc_fname), copyerr))
 
             cmd = cmd.replace(f"RemotePath({c})", loc_fname)
         else:
@@ -139,8 +143,8 @@ def _rsh(host, cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, conne
         else:
             wd_display = "~"
         hoststr += f"{Style.RESET_ALL}:{dir_style}{wd_display}{Style.RESET_ALL}"
-        cmd_fmt = cmd.strip().replace('\n', f'\n{ " " * (len(str(host)) + 1 + len(wd_display))}{sep_style}> {Style.RESET_ALL}{cmd_style} ')
-        print(f"{host_style}{hoststr}{Style.RESET_ALL}{sep_style}$ {Style.RESET_ALL}{cmd_style}{cmd_fmt}{Style.RESET_ALL}")
+        cmd_fmt = cmd.strip().replace('\n', f'\n{ " " * (len(str(host)) + 3 + len(wd_display))}{sep_style}>{Style.RESET_ALL}{cmd_style} ')
+        print(f"{Style.BRIGHT}{Fore.RED}*{Style.RESET_ALL} {host_style}{hoststr}{Style.RESET_ALL}{sep_style}$ {Style.RESET_ALL}{cmd_style}{cmd_fmt}{Style.RESET_ALL}")
     
     if host == "127.0.0.1":
         return _sh(cmd, quiet, wd, wrap, maxbuflen, ignore_errors, no_venv, pyenv_version)
@@ -182,6 +186,9 @@ def copy(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True
     if isinstance(frm, pyfra.remote.RemotePath): frm = frm.rsyncstr()
     if isinstance(to, pyfra.remote.RemotePath): to = to.rsyncstr()
 
+    if not quiet: print(f"{Style.BRIGHT}{Fore.RED}*{Style.RESET_ALL} Copying {Style.BRIGHT}{frm} {Style.RESET_ALL}to {Style.BRIGHT}{to}{Style.RESET_ALL}")
+
+    # caching stuff
     if isinstance(orig_to, pyfra.remote.RemotePath) and isinstance(orig_to.remote, pyfra.remote.Env) and update_hash:
         if frm.startswith("http://") or frm.startswith("https://"):
             fhash = frm
@@ -238,17 +245,18 @@ def copy(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True
         if to_host == frm_host:
             if symlink_ok:
                 assert not exclude, "Cannot use exclude symlink"
-                _rsh(frm_host, f"[ -d {frm_path} ] && mkdir -p {to_path}; ln -sf {symlink_frm(frm_path)} {to_path}")
+                _rsh(frm_host, f"[ -d {frm_path} ] && mkdir -p {to_path}; ln -sf {symlink_frm(frm_path)} {to_path}", quiet=True)
             else:
 
-                _rsh(frm_host, (f"mkdir -p {par_target}; " if par_target else "") + f"rsync {opts} {frm_path} {to_path}")
+                if par_target: _rsh(to_host, f"mkdir -p {par_target}", quiet=True)
+                _rsh(frm_host, f"rsync {opts} {frm_path} {to_path}", quiet=True)
         else:
             rsync_cmd = f"rsync {opts} {frm_path} {to}"
                 
             # make parent dir in terget if not exists
-            if par_target: _rsh(to_host, f"mkdir -p {par_target}")
+            if par_target: _rsh(to_host, f"mkdir -p {par_target}", quiet=True)
 
-            sh(f"eval \"$(ssh-agent -s)\"; ssh-add ~/.ssh/id_rsa; ssh -q -oConnectTimeout={connection_timeout} -oBatchMode=yes -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -A {frm_host} {rsync_cmd | quote}", wrap=False)
+            sh(f"eval \"$(ssh-agent -s)\"; ssh-add ~/.ssh/id_rsa; ssh -q -oConnectTimeout={connection_timeout} -oBatchMode=yes -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -A {frm_host} {rsync_cmd | quote}", wrap=False, quiet=True)
     else:
         # if to is host:path, then this gives us path; otherwise, it leaves it unchanged
         par_target = to.split(":")[-1]
@@ -256,9 +264,10 @@ def copy(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True
 
         if symlink_ok and ":" not in frm and ":" not in to:
             assert not exclude, "Cannot use exclude symlink"
-            sh(f"[ -d {frm} ] && mkdir -p {par_target}; ln -sf {symlink_frm(frm)} {to}")
+            sh(f"[ -d {frm} ] && mkdir -p {par_target}; ln -sf {symlink_frm(frm)} {to}", quiet=True)
         else:
-            sh((f"mkdir -p {par_target}; " if par_target else "") + f"rsync {opts} {frm} {to}", wrap=False)
+            if ":" in to: _rsh(to.split(":")[0], f"mkdir -p {par_target}", quiet=True)
+            sh((f"mkdir -p {par_target}; " if par_target and ":" in frm else "") + f"rsync {opts} {frm} {to}", wrap=False, quiet=False)
     
     commit_state()
 

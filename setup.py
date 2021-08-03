@@ -37,5 +37,6 @@ setuptools.setup(
         'colorama',
         'parse',
         'natsort',
+        'yaspin',
     ]
 )

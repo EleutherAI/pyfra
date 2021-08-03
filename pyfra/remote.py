@@ -17,6 +17,7 @@ from natsort import natsorted
 import io
 import pathlib
 import hashlib
+from yaspin import yaspin
 
 
 sentinel = object()
@@ -146,7 +147,7 @@ class RemotePath:
                 fh.write(content)
             if append:
                 pyfra.shell.copy(f".tmp.{nonce}", self.remote.path(f".tmp.{nonce}"), quiet=True, update_hash=False)
-                self.remote._sh(f"cat .tmp.{nonce} >> {self.fname} && rm .tmp.{nonce}")
+                self.remote._sh(f"cat .tmp.{nonce} >> {self.fname} && rm .tmp.{nonce}", quiet=True)
             else:
                 pyfra.shell.copy(f".tmp.{nonce}", self, quiet=True, update_hash=False)
             pyfra.shell.rm(f".tmp.{nonce}")
@@ -216,20 +217,44 @@ class RemotePath:
         fh.seek(0)
         self.write(fh.read())
     
+    def _remote_payload(self, name, *args, **kwargs):
+        """
+        Run an arbitrary Path.* function remotely and return the result.
+        Restricted to os rather than arbitrary eval for security reasons.
+        """
+        assert all(x in "_.abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ" for x in name)
+
+        if self.remote is None:
+            fn = pathlib.Path(self.fname)
+            for k in name.split("."):
+                fn = getattr(fn, k)
+            return fn(*args, **kwargs)
+        else:
+            payload = f"import pathlib,json; print(json.dumps(pathlib.Path({repr(self.fname)}).expanduser().{name}(*{args}, **{kwargs})))"
+            ret = self.remote.sh(f"python -c {payload | pyfra.shell.quote}", quiet=True)
+            return json.loads(ret)
+
     def stat(self) -> os.stat_result:
         """
         Stat a remote file
         """
-        if self.remote is None:
-            return os.stat(self.fname)
-        else:
-            nonce = random.randint(0, 99999)
-            payload = f"import os,json; print(json.dumps(os.stat({self.fname}))"
-            self.remote._sh(f"python -c {payload | pyfra.shell.quote} > .tmp.{nonce}")
-            with open(f".tmp.{nonce}") as fh:
-                ret = os.stat_result(json.read(fh))
-                pyfra.shell.rm(f".tmp.{nonce}")
-                return ret
+        return os.stat_result(self._remote_payload("stat"))
+    
+    def exists(self) -> bool:
+        """
+        Check if this file exists
+        """
+        try:
+            return self._remote_payload("exists")
+        except pyfra.shell.ShellException:
+            # if we can't connect to the remote, the file does not exist
+            return False
+    
+    def is_dir(self) -> bool:
+        """
+        Check if this file exists
+        """
+        return self._remote_payload("is_dir")
 
     def expanduser(self) -> RemotePath:
         """
@@ -242,6 +267,9 @@ class RemotePath:
 
             # todo: be more careful with this replace
             return RemotePath(self.remote, os.path.expanduser(self.fname).replace("~", homedir))
+    
+    def __div__(self, other):
+        return RemotePath(self.remote, os.path.join(self.fname, other))
 
 
 class Remote:
@@ -301,7 +329,7 @@ class Remote:
         """
         A unique string for the server that this Remote is pointing to. 
         """
-        self.sh("if [ ! -f ~/.pyfra.fingerprint ]; then cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1 > ~/.pyfra.fingerprint; fi")
+        self.sh("if [ ! -f ~/.pyfra.fingerprint ]; then cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1 > ~/.pyfra.fingerprint; fi", quiet=True)
         tmpname = ".fingerprint." + str(random.randint(0, 99999))
         pyfra.shell.copy(self.path("~/.pyfra.fingerprint"), tmpname)
         ret = pyfra.shell.fread(tmpname)
@@ -351,51 +379,62 @@ class Env(Remote):
             return e.path("output.json")
     """
     def __init__(self, ip=None, wd=None, git=None, branch=None, python_version="3.9.4", disable_caching=False):
-        super().__init__(ip, wd)
-        
-        self.pyenv_version = python_version
-        self.wd = wd
-        self.disable_caching = disable_caching
+        with yaspin(text="Loading", color="white") as spinner:
+            spinner.text = f"[{ip}:{wd}] Creating Env" 
+            super().__init__(ip, wd)
+            
+            self.pyenv_version = python_version
+            self.wd = wd
 
-        # this is where we store all state relating to this env
-        self.meta_dir = (self.wd if self.wd[-1] != '/' else self.wd[:-1]) + "_meta"
+            ## Caching stuff
+            self.disable_caching = disable_caching
 
-        self.skippable_hashes = set()
-        self._populate_skippable_hashes()
+            # this is where we store all state relating to this env
+            self.meta_dir = (self.wd if self.wd[-1] != '/' else self.wd[:-1]) + "_meta"
 
-        # initialize pyfra hash with python version and git commit hash if we're using git
-        self.hash = self._hash(None, "init", self.wd, python_version, [git, branch] if git is not None else None)
+            self.skippable_hashes = set()
+            self._populate_skippable_hashes()
 
-        if self.hash in self.skippable_hashes: return
+            # initialize pyfra hash with python version and git commit hash if we're using git
+            self.hash = self._hash(None, "init", self.wd, python_version, [git, branch] if git is not None else None)
 
-        # install python/pyenv
-        self._install(python_version)
+            if self.hash in self.skippable_hashes: return
+            ## End caching stuff
+    
+            spinner.text = f"[{ip}:{wd}] Installing python in env" 
+            # install python/pyenv
+            with spinner.hidden():
+                self._install(python_version)
 
-        # pull git
-        if git is not None:
-            # TODO: make this usable
-            nonce = str(random.randint(0, 99999))
+            self.sh(f"mkdir -p {wd}", no_venv=True, quiet=True)
 
-            if branch is None:
-                branch_cmds = ""
-            else:
-                branch_cmds = f"git checkout {branch}; git pull origin {branch}; "
+            # pull git
+            if git is not None:
+                spinner.text = f"[{ip}:{wd}] Cloning from git repo" 
+                # TODO: make this usable
+                nonce = str(random.randint(0, 99999))
 
-            self._sh(f"{{ rm -rf ~/.tmp_git_repo.{nonce} ; git clone {git} ~/.tmp_git_repo.{nonce} ; rsync -ar --delete ~/.tmp_git_repo.{nonce}/ {wd}/ ; rm -rf ~/.tmp_git_repo.{nonce} ; cd {wd}; {branch_cmds} }}", ignore_errors=True)
+                if branch is None:
+                    branch_cmds = ""
+                else:
+                    branch_cmds = f"git checkout {branch}; git pull origin {branch}; "
 
-        else:
-            # if we're not using git, we need to empty the directory, since the `git is not None` branch over-writes the directory with rsync --delete
-            self._sh(f"rm -rf {wd}; mkdir -p {wd}", pyenv_version=None)
+                self.sh(f"{{ rm -rf ~/.tmp_git_repo.{nonce} ; git clone {git} ~/.tmp_git_repo.{nonce} ; rsync -ar --delete ~/.tmp_git_repo.{nonce}/ {wd}/ ; rm -rf ~/.tmp_git_repo.{nonce} ; cd {wd}; {branch_cmds} }}", ignore_errors=True, quiet=True)
 
-        # install venv
-        if wd is not None:
-            pyenv_cmds = f"[ -d env/lib/python{python_version.rsplit('.')[0]} ] || rm -rf env ; python --version ; pyenv shell {python_version} ; python --version;" if python_version is not None else ""
-            self._sh(f"mkdir -p {wd}; cd {wd}; {pyenv_cmds} [ -f env/bin/activate ] || python -m virtualenv env", no_venv=True)
-            self._sh("pip install -e . ; pip install -r requirements.txt", ignore_errors=True)
-
-        # commit state to git
-        self._sh("git init")
-
+            # install venv
+            if wd is not None:
+                spinner.text = f"[{ip}:{wd}] Creating virtualenv" 
+                pyenv_cmds = f"[ -d env/lib/python{python_version.rsplit('.')[0]} ] || rm -rf env ; python --version ; pyenv shell {python_version} ; python --version;" if python_version is not None else ""
+                self.sh(f"mkdir -p {wd}; cd {wd}; {pyenv_cmds} [ -f env/bin/activate ] || python -m virtualenv env", no_venv=True, quiet=True)
+                spinner.text = f"[{ip}:{wd}] Installing requirements" 
+                self.sh("pip install -e . ; pip install -r requirements.txt", ignore_errors=True, quiet=True)
+            
+            spinner.text = f"[{ip}:{wd}] Env created" 
+            spinner.color = "green"
+            spinner.ok("OK ")
+            
+            # commit state to git
+            self._sh("git init")
 
     def sh(self, x, quiet=False, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False, pyenv_version=sentinel, update_hash=True):
         """
@@ -427,7 +466,7 @@ class Env(Remote):
         if python_version is not None: install_pyenv(self, python_version)
 
         # install rsync for copying files
-        self._sh("rsync --help > /dev/null || ( sudo apt-get update && sudo apt-get install -y rsync )")
+        self.sh("rsync --help > /dev/null || ( sudo apt-get update && sudo apt-get install -y rsync )", quiet=True)
 
     def _to_json(self):
         return {
@@ -509,5 +548,6 @@ class Env(Remote):
                 self.skippable_hashes.add(ob["hash"])
         except FileNotFoundError:
             pass
+
 
 local = Remote(wd=os.getcwd())
