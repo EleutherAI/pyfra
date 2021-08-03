@@ -376,7 +376,7 @@ class Env(Remote):
             self.sh(f"mkdir -p {wd}; cd {wd}; {pyenv_cmds} [ -f env/bin/activate ] || python -m virtualenv env", no_venv=True, quiet=True)
             self.sh("pip install -e . ; pip install -r requirements.txt", ignore_errors=True, quiet=True)
         
-        self.sh(f"mkdir -p {wd}")
+        self.sh(f"mkdir -p {wd}", no_venv=True, quiet=True)
 
     def sh(self, x, quiet=False, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False, pyenv_version=sentinel):
         """
