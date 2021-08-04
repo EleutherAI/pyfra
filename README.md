@@ -36,6 +36,7 @@ rem2 = Remote("goose@8.8.8.8")
 env1 = rem1.env("tokenization")
 env2 = rem2.env("neox", "https://github.com/EleutherAI/gpt-neox")
 
+# path creates a RemotePath object, which behaves similar to a pathlib Path.
 raw_data = local.path("training_data.txt")
 tokenized_data = env2.path("tokenized_data")
 
