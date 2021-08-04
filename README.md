@@ -32,6 +32,7 @@ from pyfra import *
 rem1 = Remote("user@example.com")
 rem2 = Remote("goose@8.8.8.8")
 
+# env creates an environment object, which behaves very similarly to a Remote, but comes with a fresh python environment in a newly created directory
 env1 = rem1.env("tokenization")
 env2 = rem2.env("neox", "https://github.com/EleutherAI/gpt-neox")
 
