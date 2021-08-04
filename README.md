@@ -15,10 +15,10 @@ Therefore, the objective of pyfra is to make it as fast and *low-friction* as po
 
 Features:
 
- - Spin up an internal webserver complete with a permissions system using only a few lines of code
  - Extremely elegant shell integration—run commands on any server seamlessly. All the best parts of bash and python combined
+ - Handle files on remote servers with a pathlib-like interface the same way you would local files (WIP, partially implemented)
  - Automated remote environment setup, so you never have to worry about provisioning machines by hand again
- - (WIP) Tools for painless functional programming in python
+ - Spin up an internal webserver complete with a permissions system using only a few lines of code
  - (Coming soon) High level API for experiment management/scheduling and resource provisioning
  - (Coming soon) Idempotent resumable data pipelines with no cognitive overhead
 
@@ -29,46 +29,22 @@ Want to dive in? See the [documentation](https://pyfra.readthedocs.io/en/latest/
 ```python
 from pyfra import *
 
-loc = Remote()
-rem = Remote("user@example.com")
-nas = Remote("user@example2.com")
+rem1 = Remote("user@example.com")
+rem2 = Remote("goose@8.8.8.8")
 
-@page("Run experiment", dropdowns={'server': ['local', 'remote']})
-def run_experiment(server: str, config_file: str, some_numerical_value: int, some_checkbox: bool):
-    r = loc if server == 'local' else rem
+env1 = rem1.env("tokenization")
+env2 = rem2.env("neox", "https://github.com/EleutherAI/gpt-neox")
 
-    env = r.env("neox", "https://github.com/EleutherAI/gpt-neox")
-    
-    # copy as a function can do local-local, local-remote, and remote-remote
-    copy(config_file, env.path("configs/my-config.yml"))
-    copy(nas.path('some_data_file'), env.path('data/whatever'))
-    
-    return env.sh('python main.py')
+raw_data = local.path("training_data.txt")
+tokenized_data = env2.path("tokenized_data")
 
-@page("Write example file and copy")
-def example():
-    rem.path("testing.txt").fwrite("hello world")
-    
-    # tlocal files can be specified as just a string
-    copy(rem.path('testing123.txt'), 'test1.txt')
-    copy(rem.path('testing123.txt'), loc.path('test2.txt'))
+# tokenize
+copy("https://goose.com/files/tokenize_script.py", env1.path("tokenize.py")) # copy can copy from local/remote/url to local/remote
+env1.sh(f"python tokenize.py --input {raw_data} --output {tokenized_data}") # implicitly copy files just by using the path object in an f-string
 
-    loc.sh('cat test1.txt')
-    
-    assert loc.path('test1.txt').read() == loc.path('test2.txt').read()
-    assert loc.path('test1.txt').read() == rem.path('testing123.txt').read()
-
-    # ls as a function returns a list of files (with absolute paths) on the selected remote.
-    # the returned value is displayed on the webpage.
-    return '\n'.join(rem.ls('/'))
-
-@page("List files in some directory")
-def list_files(directory):
-    return sh(f"ls -la {directory | quote}")
-
-
-# start internal webserver
-webserver()
+# start training run
+env2.path("config.json").jwrite({...})
+env2.sh("python train.py --input tokenized_data --config config.json")
 ```
 
 ## Installation
