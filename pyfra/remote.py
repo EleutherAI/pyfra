@@ -388,7 +388,7 @@ class Env(Remote):
             if wd is not None:
                 spinner.text = f"[{ip}:{wd}] Creating virtualenv" 
                 pyenv_cmds = f"[ -d env/lib/python{python_version.rsplit('.')[0]} ] || rm -rf env ; python --version ; pyenv shell {python_version} ; python --version;" if python_version is not None else ""
-                self.sh(f"mkdir -p {wd}; cd {wd}; {pyenv_cmds} [ -f env/bin/activate ] || python -m virtualenv env", no_venv=True, quiet=True)
+                self.sh(f"mkdir -p {wd}; cd {wd}; {pyenv_cmds} [ -f env/bin/activate ] || python -m virtualenv env || ( python -m pip install virtualenv; python -m virtualenv env )", no_venv=True, quiet=True)
                 spinner.text = f"[{ip}:{wd}] Installing requirements" 
                 self.sh("pip install -e . ; pip install -r requirements.txt", ignore_errors=True, quiet=True)
             
