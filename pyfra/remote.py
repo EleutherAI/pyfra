@@ -15,6 +15,7 @@ from natsort import natsorted
 import io
 import pathlib
 from yaspin import yaspin
+import uuid
 
 
 sentinel = object()
@@ -289,10 +290,15 @@ class Remote:
         else:
             return pyfra.shell._rsh(self.ip, x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=pyenv_version)
     
-    def path(self, fname) -> RemotePath:
+    def path(self, fname=None) -> RemotePath:
         """
         This is the main way to make a :class:`RemotePath` object; see RemotePath docs for more info on what they're used for.
+
+        If fname is not specified, this command allocates a temporary path
         """
+        if fname is None:
+            return self.path(f"pyfra_tmp_{uuid.uuid4().hex}")
+
         if isinstance(fname, RemotePath):
             assert fname.remote == self
             return fname
