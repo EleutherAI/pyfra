@@ -9,7 +9,7 @@ import os
 
 @once
 def split_data(rem, input, shuffle=False):
-    rsync(input, rem.file("split_inp"), into=False)
+    copy(input, rem.path("split_inp"), into=False)
     if shuffle:
         rem.sh(f"""
         pip install lm_dataformat
@@ -26,15 +26,15 @@ def split_data(rem, input, shuffle=False):
         python split_lmd.py split_inp
         """)
 
-    return rem.file("output_split")
+    return rem.path("output_split")
 
-@once(version=1)
+@once(v=1)
 def tokenize(rem_tok, rem_gcp, input, dataset_name, dataset_bucket):
     if isinstance(dataset_bucket, str): dataset_bucket = [dataset_bucket]
     for bucket in dataset_bucket: rem_gcp.sh(f"gsutil -m rm -r {trim_slash(bucket)}/{dataset_name}", ignore_errors=True)
 
     env = rem_tok.env("tokenization_pyfra", "https://github.com/EleutherAI/gpt-neo")
-    rsync(input, env.file(f"inpdata"), into=False)
+    copy(input, env.path(f"inpdata"), into=False)
 
     env.sh("rm inpdata/current_chunk_incomplete", ignore_errors=True)
 
@@ -49,7 +49,7 @@ def tokenize(rem_tok, rem_gcp, input, dataset_name, dataset_bucket):
     """)
 
     rem_gcp.sh(f"rm -rf {dataset_name}_tfrecords; mkdir {dataset_name}_tfrecords", ignore_errors=True)
-    rsync(env.file(f"data/{dataset_name}_tfrecords/"), rem_gcp.file(f"{dataset_name}_tfrecords"))
+    copy(env.path(f"data/{dataset_name}_tfrecords/"), rem_gcp.path(f"{dataset_name}_tfrecords"))
     for bucket in dataset_bucket: rem_gcp.sh(f"gsutil -m cp -r {dataset_name}_tfrecords {trim_slash(bucket)}/{dataset_name}")
     rem_gcp.rm(f"{dataset_name}_tfrecords")
 
@@ -180,8 +180,8 @@ def train_model(rem, experiment_name, dataset_bucket, model_bucket, tpu_config={
     data_conf["path"] = f"{dataset_bucket}/*.tfrecords"
     data_conf["eval_path"] = val_data
     config_json = config_for(experiment_name, model_size, tpu_size, config_override, model_bucket)
-    rem.file(f"configs/{experiment_name}.json").jwrite(config_json)
-    rem.file(f"configs/dataset_configs/{experiment_name}_data.json").jwrite(data_conf)
+    rem.path(f"configs/{experiment_name}.json").jwrite(config_json)
+    rem.path(f"configs/dataset_configs/{experiment_name}_data.json").jwrite(data_conf)
     # if resuming, copy from old dir
     if resume_from is not None:
         try:
@@ -212,7 +212,7 @@ def train_model(rem, experiment_name, dataset_bucket, model_bucket, tpu_config={
 
     rem.sh(f"python3 run_experiment.py --experiment_name {experiment_name} --tpu {tpu_name} --model {experiment_name} --json_save eval_{experiment_name}.jsonl --steps_per_checkpoint {steps_per_checkpoint} --opt_init_step --initial_heartbeat_timeout 28800")
 
-    rsync(rem.file(f'eval_{experiment_name}.jsonl'), '.')
+    copy(rem.path(f'eval_{experiment_name}.jsonl'), '.')
     return config_json
 
 
@@ -224,7 +224,7 @@ def train_model_jax(rem, experiment_name, tpu_name, region, custom_config):
     conf = local.jread("jax_config.json")
     for k, v in custom_config.items():
         conf[k] = v
-    env.file(f"configs/{experiment_name}.json").jwrite(conf)
+    env.path(f"configs/{experiment_name}.json").jwrite(conf)
     env.sh(f"python train.py --tpu {tpu_name} --preemptible --config configs/{experiment_name}.json --tpu_region {region}")
 
 def latest_model_index(rem, model_path):
@@ -260,7 +260,7 @@ def convert_neo_to_hf(rem_gcp, rem_hf, model_path, hf_url, config):
 def convert_neo_to_hf_for_index(rem_gcp, rem_hf, model_path, latest, hf_url, config):
     assert 'HF_USER' in os.environ and 'HF_PWD' in os.environ
 
-    rem_hf.file("hf_login").write(f"""
+    rem_hf.path("hf_login").write(f"""
     spawn transformers-cli login
     expect "Username:"
     send "{os.environ['HF_USER']}\n"
@@ -286,7 +286,7 @@ def convert_neo_to_hf_for_index(rem_gcp, rem_hf, model_path, latest, hf_url, con
     gsutil cp {model_path}/checkpoint model/
     """).split('\n')
 
-    env_gcp.file("config.json").jwrite(config)
+    env_gcp.path("config.json").jwrite(config)
 
     env_gcp.sh(f"""
     pip install git+https://github.com/leogao2/transformers@patch-3 torch tensorflow
@@ -297,7 +297,7 @@ def convert_neo_to_hf_for_index(rem_gcp, rem_hf, model_path, latest, hf_url, con
     """)
 
     rem_hf.sh(f"mkdir -p converted/")
-    rsync(env_gcp.file(f"output/"), rem_hf.file(f"converted/{slugify(hf_url)}_tmp/"), symlink_ok=False)
+    copy(env_gcp.path(f"output/"), rem_hf.path(f"converted/{slugify(hf_url)}_tmp/"), symlink_ok=False)
 
     rem_gcp.rm(slugify(hf_url))
 
@@ -341,7 +341,7 @@ def run_eval_harness(rem, tasks, model_name, batch_size=1, gpu_id=0, k=0):
 
     env.sh(f"CUDA_VISIBLE_DEVICES={gpu_id} python3 main.py --model {model} --model_args pretrained={model_name} --tasks {tasks} --output_path eval_{slugify(model_name)}.json --batch_size {batch_size}" + (f" --num_fewshot {k}" if k != 0 else ""))
 
-    return env.file(f"eval_{slugify(model_name)}.json")
+    return env.path(f"eval_{slugify(model_name)}.json")
 
 
 TASKS_LLONLY_SMALL = [
