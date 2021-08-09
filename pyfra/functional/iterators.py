@@ -1,5 +1,6 @@
 import collections
 
+# Deprecated
 
 def chunks(iter, n):
     arr = []

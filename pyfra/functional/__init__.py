@@ -1,6 +1,7 @@
 from .iterators import *
 from functools import partial
 
+# Deprecated
 
 def identity(x):
     return x
