@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="pyfra",
-    version="0.1.4",
+    version="0.2.0",
     author="Leo Gao",
     author_email="lg@eleuther.ai",
     description="A framework for research code",
