@@ -124,7 +124,7 @@ def sh(cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, ignore_errors
     return _rsh("127.0.0.1", cmd, quiet, wd, wrap, maxbuflen, -1, ignore_errors, no_venv, pyenv_version)
 
 
-def _rsh(host, cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, connection_timeout=10, ignore_errors=False, no_venv=False, pyenv_version=None):
+def _rsh(host, cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, connection_timeout=10, ignore_errors=False, no_venv=False, pyenv_version=None, forward_keys=False):
     if host is None or host == "localhost": host = "127.0.0.1"
 
     # implicit-copy files from remote to local
@@ -152,8 +152,9 @@ def _rsh(host, cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, conne
 
     if wrap: cmd = _wrap_command(cmd, no_venv=no_venv, pyenv_version=pyenv_version)
     if wd: cmd = f"cd {wd}  > /dev/null 2>&1; {cmd}"
-
-    ret = _sh(f"ssh -q -oConnectTimeout={connection_timeout} -oBatchMode=yes -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -t {host} {shlex.quote(cmd)}", quiet=quiet, wrap=False, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv)
+ 
+    ssh_cmd = "eval \"$(ssh-agent -s)\"; ssh-add ~/.ssh/id_rsa; ssh -A" if forward_keys else "ssh"
+    ret = _sh(f"{ssh_cmd} -q -oConnectTimeout={connection_timeout} -oBatchMode=yes -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -t {host} {shlex.quote(cmd)}", quiet=quiet, wrap=False, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv)
 
     # implicit-copy files from local to remote
     for remf, locf, copyerr in rempaths:
