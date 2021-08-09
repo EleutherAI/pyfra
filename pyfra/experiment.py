@@ -27,9 +27,16 @@ class Experiment:
         env = rem.env(self.experiment_name)
 
         pyfra.shell.copy(pyfra.remote.local.path("."), env.path("."), into=False)
-        env.sh(f"sudo apt install tmux -y; pip install -U pyfra; pip install -r requirements.txt; tmux new-session -d -s {quote(self.experiment_name)}", ignore_errors=True)
 
-        cmd = pyfra.shell._wrap_command("PYFRA_DELEGATED=1 python "+" ".join([quote(x) for x in sys.argv]), pyenv_version=env.pyenv_version)
-        env.sh(f"tmux send-keys -t {quote(self.experiment_name)} {quote(cmd)} Enter")
-        env.sh(f"tmux a -t {quote(self.experiment_name)}", maxbuflen=0, forward_keys=True)
+        def _attach_tmux():
+            env.sh(f"tmux a -t {quote(self.experiment_name)}", maxbuflen=0, forward_keys=True)
+        
+        try:
+            _attach_tmux()
+        except pyfra.shell.ShellException:
+            env.sh(f"sudo apt install tmux -y; pip install -U pyfra; pip install -r requirements.txt; tmux new-session -d -s {quote(self.experiment_name)}", ignore_errors=True)
+            cmd = pyfra.shell._wrap_command("eval $(tmux show-env -s |grep '^SSH_'); PYFRA_DELEGATED=1 python "+" ".join([quote(x) for x in sys.argv]), pyenv_version=env.pyenv_version)
+            env.sh(f"tmux send-keys -t {quote(self.experiment_name)} {quote(cmd)} Enter")
+            _attach_tmux()
+
         sys.exit(0)
