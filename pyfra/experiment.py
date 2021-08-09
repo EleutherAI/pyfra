@@ -37,9 +37,12 @@ class Experiment:
         try:
             _attach_tmux()
         except pyfra.shell.ShellException:
-            env.sh(f"sudo apt install tmux -y; pip install -U pyfra; pip install -r requirements.txt; tmux new-session -d -s {quote(tmux_name)}", ignore_errors=True)
-            cmd = pyfra.shell._wrap_command("eval $(tmux show-env -s |grep '^SSH_'); PYFRA_DELEGATED=1 python "+" ".join([quote(x) for x in sys.argv]), pyenv_version=env.pyenv_version)
+            env.sh(f"sudo apt install tmux -y; pip install -U git+https://github.com/EleutherAI/pyfra; pip install -r requirements.txt; tmux new-session -d -s {quote(tmux_name)}", ignore_errors=True)
+            cmd = pyfra.shell._wrap_command("PYFRA_DELEGATED=1 python "+" ".join([quote(x) for x in sys.argv]), pyenv_version=env.pyenv_version)
+            ssh_agent_cmd = "eval $(tmux show-env -s |grep '^SSH_')"
+            env.sh(f"tmux send-keys -t {quote(tmux_name)} {quote(ssh_agent_cmd)} Enter")
             env.sh(f"tmux send-keys -t {quote(tmux_name)} {quote(cmd)} Enter")
+            
             _attach_tmux()
 
         sys.exit(0)
