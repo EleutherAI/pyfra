@@ -25,7 +25,7 @@ __all__ = ['sh', 'copy', 'ls', 'rm', 'curl', 'wget', 'quote']
 
 def _wrap_command(x, no_venv=False, pyenv_version=None):
     bashrc_payload = r"""import sys,re; print(re.sub("If not running interactively.{,128}?esac", "", sys.stdin.read(), flags=re.DOTALL).replace('[ -z "$PS1" ] && return', ''))"""
-    hdr = f"eval $(tmux show-env -s 2> /dev/null |grep '^SSH_'); shopt -s expand_aliases; ctrlc() {{ echo Shell wrapper interrupted with C-c, raising error; exit 174; }}; trap ctrlc SIGINT; "
+    hdr = f"shopt -s expand_aliases; ctrlc() {{ echo Shell wrapper interrupted with C-c, raising error; exit 174; }}; trap ctrlc SIGINT; "
     hdr += f"eval \"$(cat ~/.bashrc | python3 -c {bashrc_payload | quote})\"  > /dev/null 2>&1; "
     hdr += "python() { python3 \"$@\"; };" # use python3 by default
     if pyenv_version is not None: hdr += f"pyenv shell {pyenv_version} || exit 1 > /dev/null 2>&1; "
