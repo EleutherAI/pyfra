@@ -2,6 +2,7 @@ import os
 from shlex import quote
 import sys
 import pathlib
+import time
 
 import pyfra.shell
 import pyfra.remote
@@ -9,15 +10,9 @@ import pyfra.remote
 class Experiment:
     def __init__(self, experiment_name, experiment_server=None):
         self.experiment_name = experiment_name
-        self.remotes = []
         
         if experiment_server is not None:
             self.delegate(experiment_server)
-    
-    def remote(self, ip, wd=None):
-        r = pyfra.remote.Remote(ip, wd, self)
-        self.remotes.append(r)
-        return r
 
     def delegate(self, rem):
         tmux_name = f"pyfra_delegated_{self.experiment_name}"
@@ -35,7 +30,7 @@ class Experiment:
             # the problem with ssh -A is that your remote is screwed if your original client goes offline, which totally
             # defeats the purpose of doing this in the first place. also there's something extremely weird going on
             # with tmux that makes it so that ssh forward won't carry over to the tmux session, but you can
-            # fix that with `eval $(tmux show-env -s |grep '^SSH_')`, but that doesn't work wiuth send-keys, it only works with 
+            # fix that with `eval $(tmux show-env -s |grep '^SSH_')` inside the tmux, but that doesn't work with send-keys, it only works with 
             # actually running it by hand in the tmux for some reason. I've tried running it multiple times using send-keys,
             # adding a delay, adding a dummy ssh 127.0.0.1 command in between just to get ssh to use the ssh-agent to auth, etc and it jsut won't work. 
             # I'm not sure why, and to save my sanity for now I'm just going to require adding the right ssh keys to the delegated server manually.
@@ -51,9 +46,11 @@ class Experiment:
             cmd += f";[ -f env/bin/activate ] && . env/bin/activate; "
             cmd += "PYFRA_DELEGATED=1 python "+" ".join([quote(x) for x in sys.argv])
 
-            env.sh(f"tmux send-keys -t {quote(tmux_name)} {quote(ssh_agent_cmd)} Enter")
             env.sh(f"tmux send-keys -t {quote(tmux_name)} {quote(cmd)} Enter")
             
             _attach_tmux()
 
         sys.exit(0)
+
+
+class CachedBlock:
