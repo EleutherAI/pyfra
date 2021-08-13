@@ -51,6 +51,3 @@ class Experiment:
             _attach_tmux()
 
         sys.exit(0)
-
-
-class CachedBlock:
