@@ -20,6 +20,12 @@ class _ObjectEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
+def hash_obs(*args):
+    jsonobj = json.dumps(args, sort_keys=True, cls=_ObjectEncoder)
+    arghash = hashlib.sha256(jsonobj.encode()).hexdigest()
+    return arghash
+
+
 def once(sentinel=None, *, name=None, v=0, backup=None):
     """ Only run a function once, saving its return value to disk. Args must be json-encodable. """
 
@@ -28,8 +34,7 @@ def once(sentinel=None, *, name=None, v=0, backup=None):
 
         def _fn(*args, **kwargs):
             # hash the arguments
-            jsonobj = json.dumps([args, kwargs], sort_keys=True, cls=_ObjectEncoder)
-            arghash = hashlib.sha256(jsonobj.encode()).hexdigest()
+            arghash = hash_obs([args, kwargs])
 
             print("@once:", fname, args, kwargs, arghash, v)
 

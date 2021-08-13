@@ -16,6 +16,7 @@ import io
 import pathlib
 from yaspin import yaspin
 import uuid
+import pyfra.utils.misc
 
 
 sentinel = object()
@@ -84,6 +85,9 @@ class RemotePath:
 
         self.remote = remote
         self.fname = fname
+
+        self._modified_time = None
+        self._cache = {}
     
     def rsyncstr(self):
         return f"{self.remote}:{self.fname}" if self.remote is not None and self.remote.ip is not None else self.fname
@@ -97,6 +101,25 @@ class RemotePath:
     def __repr__(self):
         return f"RemotePath({json.dumps(self._to_json())})"
     
+    def cache(self, fn):
+        """
+        Use as an annotation. Caches the response of the function and
+        check modification time on the file on every call.
+        """
+        modified_time = self.stat().st_mtime
+        def wrapper(*args, **kwargs):
+            hash = pyfra.utils.misc.hash_obs(fn.__name__, args, kwargs)
+            if self.stat().st_mtime != modified_time:
+                self._modified_time = modified_time
+
+                ret = fn(*args, **kwargs)
+                self._cache[hash] = ret
+                return ret
+            else:
+                return self._cache[hash]
+        return wrapper
+
+    @cache
     def read(self) -> str:
         """
         Read the contents of this file into a string
@@ -250,6 +273,13 @@ class RemotePath:
     
     def __div__(self, other):
         return RemotePath(self.remote, os.path.join(self.fname, other))
+
+    @cache
+    def sha256sum(self) -> str:
+        """
+        Return the sha256sum of this file.
+        """
+        return self.remote.sh(f"sha256sum {self.fname}", quiet=True).split(" ")[0]
 
 
 class Remote:
