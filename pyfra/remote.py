@@ -18,6 +18,8 @@ import io
 import pathlib
 import hashlib
 from yaspin import yaspin
+import uuid
+import pyfra.utils.misc
 
 
 sentinel = object()
@@ -94,6 +96,9 @@ class RemotePath:
 
         self.remote = remote
         self.fname = fname
+
+        self._modified_time = None
+        self._cache = {}
     
     def rsyncstr(self):
         return f"{self.remote}:{self.fname}" if self.remote is not None and self.remote.ip is not None else self.fname
@@ -107,6 +112,25 @@ class RemotePath:
     def __repr__(self):
         return f"RemotePath({json.dumps(self._to_json())})"
     
+    def cache(self, fn):
+        """
+        Use as an annotation. Caches the response of the function and
+        check modification time on the file on every call.
+        """
+        modified_time = self.stat().st_mtime
+        def wrapper(*args, **kwargs):
+            hash = pyfra.utils.misc.hash_obs(fn.__name__, args, kwargs)
+            if self.stat().st_mtime != modified_time:
+                self._modified_time = modified_time
+
+                ret = fn(*args, **kwargs)
+                self._cache[hash] = ret
+                return ret
+            else:
+                return self._cache[hash]
+        return wrapper
+
+    @cache
     def read(self) -> str:
         """
         Read the contents of this file into a string
@@ -271,9 +295,16 @@ class RemotePath:
     def __div__(self, other):
         return RemotePath(self.remote, os.path.join(self.fname, other))
 
+    @cache
+    def sha256sum(self) -> str:
+        """
+        Return the sha256sum of this file.
+        """
+        return self.remote.sh(f"sha256sum {self.fname}", quiet=True).split(" ")[0]
+
 
 class Remote:
-    def __init__(self, ip=None, wd=None):
+    def __init__(self, ip=None, wd=None, experiment=None):
         """
         Args:
             ip (str): The host to ssh to. This looks something like :code:`12.34.56.78` or :code:`goose.com` or :code:`someuser@12.34.56.78` or :code:`someuser@goose.com`. You must enable passwordless ssh and have your ssh key added to the server first. If None, the Remote represents localhost.
@@ -283,8 +314,8 @@ class Remote:
         if ip in ["127.0.0.1", "localhost"]: ip = None
 
         self.ip = ip
-
         self.wd = _normalize_homedir(wd) if wd is not None else "~"
+        self.experiment = experiment
 
         self._home = None
 
@@ -301,7 +332,7 @@ class Remote:
 
         return Env(ip=self.ip, wd=wd, git=git, branch=branch, python_version=python_version, disable_caching=disable_caching)
 
-    def sh(self, x, quiet=False, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False, pyenv_version=None, update_hash=False):
+    def sh(self, x, quiet=False, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False, pyenv_version=None, update_hash=False, forward_keys=False):
         """
         Run a series of bash commands on this remote. This command shares the same arguments as :func:`pyfra.shell.sh`.
         """
@@ -309,12 +340,17 @@ class Remote:
         if self.ip is None:
             return pyfra.shell.sh(x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=pyenv_version)
         else:
-            return pyfra.shell._rsh(self.ip, x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=pyenv_version)
+            return pyfra.shell._rsh(self.ip, x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=pyenv_version, forward_keys=forward_keys)
     
-    def path(self, fname) -> RemotePath:
+    def path(self, fname=None) -> RemotePath:
         """
         This is the main way to make a :class:`RemotePath` object; see RemotePath docs for more info on what they're used for.
+
+        If fname is not specified, this command allocates a temporary path
         """
+        if fname is None:
+            return self.path(f"pyfra_tmp_{uuid.uuid4().hex}")
+
         if isinstance(fname, RemotePath):
             assert fname.remote == self
             return fname
@@ -425,7 +461,7 @@ class Env(Remote):
             if wd is not None:
                 spinner.text = f"[{ip}:{wd}] Creating virtualenv" 
                 pyenv_cmds = f"[ -d env/lib/python{python_version.rsplit('.')[0]} ] || rm -rf env ; python --version ; pyenv shell {python_version} ; python --version;" if python_version is not None else ""
-                self.sh(f"mkdir -p {wd}; cd {wd}; {pyenv_cmds} [ -f env/bin/activate ] || python -m virtualenv env", no_venv=True, quiet=True)
+                self.sh(f"mkdir -p {wd}; cd {wd}; {pyenv_cmds} [ -f env/bin/activate ] || python -m virtualenv env || ( python -m pip install virtualenv; python -m virtualenv env )", no_venv=True, quiet=True)
                 spinner.text = f"[{ip}:{wd}] Installing requirements" 
                 self.sh("pip install -e . ; pip install -r requirements.txt", ignore_errors=True, quiet=True)
             
@@ -436,7 +472,7 @@ class Env(Remote):
             # commit state to git
             self._sh("git init")
 
-    def sh(self, x, quiet=False, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False, pyenv_version=sentinel, update_hash=True):
+    def sh(self, x, quiet=False, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False, pyenv_version=sentinel, update_hash=True, forward_keys=False):
         """
         Run a series of bash commands on this remote. This command shares the same arguments as :func:`pyfra.shell.sh`.
         """

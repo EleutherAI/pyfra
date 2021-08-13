@@ -6,6 +6,7 @@ from .functional import *
 from .remote import *
 from .web import *
 from .shell import *
+from .experiment import *
 
 from .contrib import *
 
