@@ -2,18 +2,13 @@ from sqlitedict import SqliteDict
 import hashlib
 import json
 import os
-
-
-os.makedirs('state', exist_ok=True)
-state = SqliteDict("state/main.db", autocommit=True)
-
-
-def columns(x):
-    return re.split((r'\s+'), x)
+import pyfra.remote
 
 
 class _ObjectEncoder(json.JSONEncoder):
     def default(self, obj):
+        if isinstance(obj, pyfra.remote.RemotePath):
+            return obj.sha256sum()
         if hasattr(obj, "_to_json"):
             return obj._to_json()
         
@@ -25,6 +20,14 @@ def hash_obs(*args):
     arghash = hashlib.sha256(jsonobj.encode()).hexdigest()
     return arghash
 
+# everything below DEPRECATED
+
+os.makedirs('state', exist_ok=True)
+state = SqliteDict("state/main.db", autocommit=True)
+
+
+def columns(x):
+    return re.split((r'\s+'), x)
 
 def once(sentinel=None, *, name=None, v=0, backup=None):
     """ Only run a function once, saving its return value to disk. Args must be json-encodable. """
@@ -52,8 +55,6 @@ def once(sentinel=None, *, name=None, v=0, backup=None):
 
     return wrapper if sentinel is None else wrapper(sentinel)
 
-
-# DEPRECATED
 
 import multiprocessing.dummy
 import multiprocessing.pool

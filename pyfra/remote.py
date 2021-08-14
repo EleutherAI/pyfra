@@ -1,8 +1,11 @@
 from __future__ import annotations
+from contextlib import contextmanager
 from typing import *
 
+from best_download import handler
+
 import pyfra.shell
-from .setup import install_pyenv
+from pyfra.setup import install_pyenv
 from collections import namedtuple
 import codecs
 import pickle
@@ -17,6 +20,7 @@ import pathlib
 from yaspin import yaspin
 import uuid
 import pyfra.utils.misc
+import abc
 
 
 sentinel = object()
@@ -51,6 +55,27 @@ def _normalize_homedir(x):
     return x
 
 
+def mutates_state(fn, hash_key=None):
+    """
+    Decorator that marks a function as mutating the state of the underlying environment.
+    """
+    def wrapper(self, *args, **kwargs):
+        if self._no_hash: return fn(self, *args, **kwargs)
+        new_hash = self.update_hash(fn.__name__, *args, **kwargs) if hash_key is None else self.update_hash(*hash_key(fn, *args, **kwargs))
+        try:
+            print("SKIPPING")
+            # if hash is in the state, then we can just return that
+            return self.get_kv(new_hash)
+        except KeyError:
+            # otherwise, we need to run the function and save the result
+            ret = fn(self, *args, **kwargs)
+            self.set_kv(new_hash, ret)
+            return ret
+    return wrapper
+
+
+# remote stuff
+
 class RemotePath:
     """
     A RemotePath represents a path somewhere on some Remote. The RemotePath object can be used to manipulate the file.
@@ -83,7 +108,7 @@ class RemotePath:
     def __init__(self, remote, fname):
         if remote is None or remote.ip == '127.0.0.1' or remote.ip is None: remote = None
 
-        self.remote = remote
+        self.remote = remote if remote is not None else local
         self.fname = fname
 
         self._modified_time = None
@@ -101,13 +126,14 @@ class RemotePath:
     def __repr__(self):
         return f"RemotePath({json.dumps(self._to_json())})"
     
-    def cache(self, fn):
+    def cache(fn):
+        # TODO: make global cache
         """
         Use as an annotation. Caches the response of the function and
         check modification time on the file on every call.
         """
-        modified_time = self.stat().st_mtime
-        def wrapper(*args, **kwargs):
+        def wrapper(self, *args, **kwargs):
+            modified_time = self.stat().st_mtime
             hash = pyfra.utils.misc.hash_obs(fn.__name__, args, kwargs)
             if self.stat().st_mtime != modified_time:
                 self._modified_time = modified_time
@@ -118,8 +144,13 @@ class RemotePath:
             else:
                 return self._cache[hash]
         return wrapper
+    
+    def _set_cache(self, fn, value, *args, **kwargs):
+        modified_time = self.stat().st_mtime
+        self._modified_time = modified_time
+        hash = pyfra.utils.misc.hash_obs(fn.__name__, args, kwargs)
+        self._cache[hash] = value
 
-    @cache
     def read(self) -> str:
         """
         Read the contents of this file into a string
@@ -144,19 +175,7 @@ class RemotePath:
             append (bool): Whether to append or overwrite the file contents
 
         """
-        if self.remote is None:
-            with open(os.path.expanduser(self.fname), 'a' if append else 'w') as fh:
-                fh.write(content)
-        else:
-            nonce = random.randint(0, 99999)
-            with open(f".tmp.{nonce}", 'w') as fh:
-                fh.write(content)
-            if append:
-                pyfra.shell.copy(f".tmp.{nonce}", self.remote.path(f".tmp.{nonce}"), quiet=True)
-                self.remote.sh(f"cat .tmp.{nonce} >> {self.fname} && rm .tmp.{nonce}", quiet=True)
-            else:
-                pyfra.shell.copy(f".tmp.{nonce}", self, quiet=True)
-            pyfra.shell.rm(f".tmp.{nonce}")
+        self.remote.fwrite(self.fname, content, append)
     
     def jread(self):
         """
@@ -234,7 +253,7 @@ class RemotePath:
             return fn(*args, **kwargs)
         else:
             payload = f"import pathlib,json; print(json.dumps(pathlib.Path({repr(self.fname)}).expanduser().{name}(*{args}, **{kwargs})))"
-            ret = self.remote.sh(f"python -c {payload | pyfra.shell.quote}", quiet=True)
+            ret = self.remote.sh(f"python -c {payload | pyfra.shell.quote}", quiet=True, no_venv=True, pyenv_version=None)
             return json.loads(ret)
 
     def stat(self) -> os.stat_result:
@@ -258,6 +277,12 @@ class RemotePath:
         Check if this file exists
         """
         return self._remote_payload("is_dir")
+    
+    def unlink(self) -> None:
+        """
+        Delete this file
+        """
+        self._remote_payload("unlink")
 
     def expanduser(self) -> RemotePath:
         """
@@ -297,6 +322,7 @@ class Remote:
         self.experiment = experiment
 
         self._home = None
+        self._no_hash = False
 
     def env(self, envname, git=None, branch=None, python_version="3.9.4") -> Remote:
         """
@@ -319,7 +345,7 @@ class Remote:
             return pyfra.shell.sh(x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=pyenv_version)
         else:
             return pyfra.shell._rsh(self.ip, x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=pyenv_version, forward_keys=forward_keys)
-    
+
     def path(self, fname=None) -> RemotePath:
         """
         This is the main way to make a :class:`RemotePath` object; see RemotePath docs for more info on what they're used for.
@@ -338,7 +364,6 @@ class Remote:
     def __repr__(self):
         return self.ip if self.ip is not None else "127.0.0.1"
 
-    @property
     def fingerprint(self):
         """
         A unique string for the server that this Remote is pointing to. 
@@ -358,9 +383,6 @@ class Remote:
 
     def ls(self, x='.'):
         return list(natsorted(self.sh(f"ls {x} | cat").strip().split("\n")))
-
-    def rm(self, x, no_exists_ok=True):
-        self.sh(f"cd ~; rm -rf {self.path(x).fname}", ignore_errors=no_exists_ok)
      
     def home(self):
         if self._home is None:
@@ -368,7 +390,71 @@ class Remote:
         
         return self._home
 
+    def fwrite(self, fname, content, append=False):
+        if self.ip is None:
+            with open(os.path.expanduser(fname), 'a' if append else 'w') as fh:
+                fh.write(content)
+        else:
+            nonce = random.randint(0, 99999)
+            with open(f".tmp.{nonce}", 'w') as fh:
+                fh.write(content)
+            if append:
+                pyfra.shell.copy(f".tmp.{nonce}", self.path(f".tmp.{nonce}"), quiet=True)
+                self.sh(f"cat .tmp.{nonce} >> {fname} && rm .tmp.{nonce}", quiet=True)
+            else:
+                pyfra.shell.copy(f".tmp.{nonce}", self.path(fname), quiet=True)
+            pyfra.shell.rm(f".tmp.{nonce}")
 
+    # key-value store for convienence
+
+    def set_kv(self, key: str, value: Any) -> None:
+        """
+        A key value store to keep track of stuff in this env. The data is stored in the env
+        on the remote. Current implementation is inefficient (linear time, and the entire json 
+        file is moved each time) but there shouldn't be a lot of data stored in it anyways
+        (premature optimization is bad), and if we need to store a lot of data in the future 
+        we can always make this more efficient without changing the interface.
+        """
+        with self.no_hash():
+            # TODO: make more efficient
+            statefile = self.path(".pyfra_env_state.json")
+            if statefile.exists():
+                ob = statefile.jread()
+            else:
+                ob = {}
+            pickled_value = pickle.dumps(value, 0).decode()
+            ob[key] = pickled_value
+            statefile.jwrite(ob)
+
+    def get_kv(self, key: str) -> Any:
+        """
+        Retrieve a value from the state file.
+        """
+        with self.no_hash():
+            # TODO: make more efficient
+            statefile = self.path(".pyfra_env_state.json")
+            if statefile.exists():
+                ob = statefile.jread()
+            else:
+                ob = {}
+
+            return pickle.loads(ob[key].encode())
+
+    def update_hash(self, *args, **kwargs):
+        pass
+    
+    @contextmanager
+    def no_hash(self):
+        """ Context manager to turn off hashing temporarily """
+        if self._no_hash:
+            yield
+            return
+
+        self._no_hash = True
+        yield
+        self._no_hash = False
+
+# env
 class Env(Remote):
     """
     An environment is a Remote pointing to a directory that has a virtualenv and a specific version version of python installed, optionally initialized from a git repo. Since environments are also just Remotes, all methods on Remotes work on environments too (including env itself, which makes a nested environment within that invironment with no problems whatsoever).
@@ -392,13 +478,27 @@ class Env(Remote):
 
             return e.path("output.json")
     """
-    def __init__(self, ip=None, wd=None, git=None, branch=None, python_version="3.9.4"):
-        with yaspin(text="Loading", color="white") as spinner:
-            spinner.text = f"[{ip}:{wd}] Creating Env" 
-            super().__init__(ip, wd)
-            
-            self.pyenv_version = python_version
-            self.wd = wd
+    def __init__(self, ip=None, wd=None, git=None, branch=None, force_rerun=False, python_version="3.9.4"):
+        super().__init__(ip, wd)
+        self.pyenv_version = python_version
+        self.wd = wd
+
+        self.hash = self._hash(None)
+
+        if force_rerun:
+            self.path(".pyfra_env_state.json").unlink()
+
+        self._init_env(git, branch, python_version)
+    
+    @classmethod
+    def _hash(cls, *args, **kwargs):
+        return pyfra.utils.misc.hash_obs([args, kwargs])
+
+    @mutates_state
+    def _init_env(self, git, branch, python_version):
+        with yaspin(text="Loading", color="white") as spinner, self.no_hash():
+            ip = self.ip
+            wd = self.wd
 
             spinner.text = f"[{ip}:{wd}] Installing python in env" 
             # install python/pyenv
@@ -431,8 +531,8 @@ class Env(Remote):
             spinner.text = f"[{ip}:{wd}] Env created" 
             spinner.color = "green"
             spinner.ok("OK ")
-            
 
+    @mutates_state
     def sh(self, x, quiet=False, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False, pyenv_version=sentinel, forward_keys=False):
         """
         Run a series of bash commands on this remote. This command shares the same arguments as :func:`pyfra.shell.sh`.
@@ -454,5 +554,15 @@ class Env(Remote):
             'pyenv_version': self.pyenv_version,
         }
 
+    @mutates_state
+    def fwrite(self, fname, content, append=False):
+        # wraps fwrite to make it keep track of state hashes
+        # TODO: make it omit the part of fname that has the env dir, we only want the relative location within the env
+        return super().fwrite(fname, content, append)
+
+    def update_hash(self, *args, **kwargs):
+        self.hash = self._hash(self.hash, *args, **kwargs)
+        print(f"***** State is now {self.hash} - {args} {kwargs}")
+        return self.hash
 
 local = Remote(wd=os.getcwd())
