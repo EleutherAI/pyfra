@@ -179,22 +179,36 @@ def copy(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True
         symlink_ok (bool): If frm and to are on the same machine, symlinks will be created instead of actually copying. Set to false to force copying.
         into (bool): If frm is a file, this has no effect. If frm is a directory, then into=True for frm="src" and to="dst" means "src/a" will get copied to "dst/src/a", whereas into=False means "src/a" will get copied to "dst/a".
     """
-    if isinstance(frm, pyfra.remote.RemotePath): frm = frm.rsyncstr()
-    if isinstance(to, pyfra.remote.RemotePath): to = to.rsyncstr()
-
-    if not quiet: print(f"{Style.BRIGHT}{Fore.RED}*{Style.RESET_ALL} Copying {Style.BRIGHT}{frm} {Style.RESET_ALL}to {Style.BRIGHT}{to}{Style.RESET_ALL}")
 
     # copy from url
-    if frm.startswith("http://") or frm.startswith("https://"):
+    if isinstance(frm, str) and (frm.startswith("http://") or frm.startswith("https://")):
         if ":" in to:
             to_host, to_path = to.split(":")
-            _rsh(to_host, f"curl {frm} --create-dirs -o {to}")
+            _rsh(to_host, f"curl {frm} --create-dirs -o {to_path}")
         else:
             wget(frm, to)
         return
 
-    if frm[-1] == '/' and len(frm) > 1: frm = frm[:-1]
-    if not into: frm += '/'
+    # get rsync strs and make sure frm and to are RemotePaths
+    if isinstance(frm, pyfra.remote.RemotePath): 
+        frm_str = frm.rsyncstr()
+    else:
+        frm_str = frm
+        assert ":" not in frm_str
+        frm = pyfra.remote.local.path(frm)
+
+    if isinstance(to, pyfra.remote.RemotePath):
+        to_str = to.rsyncstr()
+    else:
+        to_str = to
+        assert ":" not in to_str
+        to = pyfra.remote.local.path(to)
+
+    # print info
+    if not quiet: print(f"{Style.BRIGHT}{Fore.RED}*{Style.RESET_ALL} Copying {Style.BRIGHT}{frm_str} {Style.RESET_ALL}to_str {Style.BRIGHT}{to_str}{Style.RESET_ALL}")
+
+    if frm_str[-1] == '/' and len(frm_str) > 1: frm_str = frm_str[:-1]
+    if not into: frm_str += '/'
 
     if quiet:
         opts = "-e \"ssh -o StrictHostKeyChecking=no\" -arqL"
@@ -204,17 +218,17 @@ def copy(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True
     for ex in exclude:
         opts += f" --exclude {ex | pyfra.shell.quote}"
     
-    def symlink_frm(frm):
-        # rsync behavior is to copy the contents of frm into to if frm ends with a /
-        if frm[-1] == '/': frm += '*'
+    def symlink_frm(frm_str):
+        # rsync behavior is to_str copy the contents of frm_str into to_str if frm_str ends with a /
+        if frm_str[-1] == '/': frm_str += '*'
         # ln -s can't handle relative paths well! make absolute if not already
-        if frm[0] != '/' and frm[0] != '~': frm = "$PWD/" + frm
+        if frm_str[0] != '/' and frm_str[0] != '~': frm_str = "$PWD/" + frm_str
 
-        return frm
+        return frm_str
 
-    if ":" in frm and ":" in to:
-        frm_host, frm_path = frm.split(":")
-        to_host, to_path = to.split(":")
+    if ":" in frm_str and ":" in to_str:
+        frm_host, frm_path = frm_str.split(":")
+        to_host, to_path = to_str.split(":")
 
         par_target = to_path.rsplit('/', 1)[0] if "/" in to_path else ""
 
@@ -227,23 +241,23 @@ def copy(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True
                 if par_target: _rsh(to_host, f"mkdir -p {par_target}", quiet=True)
                 _rsh(frm_host, f"rsync {opts} {frm_path} {to_path}", quiet=True)
         else:
-            rsync_cmd = f"rsync {opts} {frm_path} {to}"
+            rsync_cmd = f"rsync {opts} {frm_path} {to_str}"
                 
             # make parent dir in terget if not exists
             if par_target: _rsh(to_host, f"mkdir -p {par_target}", quiet=True)
 
             sh(f"eval \"$(ssh-agent -s)\"; ssh-add ~/.ssh/id_rsa; ssh -q -oConnectTimeout={connection_timeout} -oBatchMode=yes -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -A {frm_host} {rsync_cmd | quote}", wrap=False, quiet=True)
     else:
-        # if to is host:path, then this gives us path; otherwise, it leaves it unchanged
-        par_target = to.split(":")[-1]
+        # if to_str is host:path, then this gives us path; otherwise, it leaves it unchanged
+        par_target = to_str.split(":")[-1]
         par_target = par_target.rsplit('/', 1)[0] if "/" in par_target else ""
 
-        if symlink_ok and ":" not in frm and ":" not in to:
+        if symlink_ok and ":" not in frm_str and ":" not in to_str:
             assert not exclude, "Cannot use exclude symlink"
-            sh(f"[ -d {frm} ] && mkdir -p {par_target}; ln -sf {symlink_frm(frm)} {to}", quiet=True)
+            sh(f"[ -d {frm_str} ] && mkdir -p {par_target}; ln -sf {symlink_frm(frm_str)} {to_str}", quiet=True)
         else:
-            if ":" in to: _rsh(to.split(":")[0], f"mkdir -p {par_target}", quiet=True)
-            sh((f"mkdir -p {par_target}; " if par_target and ":" in frm else "") + f"rsync {opts} {frm} {to}", wrap=False, quiet=False)
+            if ":" in to_str: _rsh(to_str.split(":")[0], f"mkdir -p {par_target}", quiet=True)
+            sh((f"mkdir -p {par_target}; " if par_target and ":" in frm_str else "") + f"rsync {opts} {frm_str} {to_str}", wrap=False, quiet=True)
 
 def ls(x='.'):
     return list(natsorted([x + '/' + fn for fn in os.listdir(x)]))
