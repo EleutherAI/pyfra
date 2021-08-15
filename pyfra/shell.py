@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import sys
 import time
+from typing import Union
 import urllib
 import json
 
@@ -167,7 +168,7 @@ def _rsh(host, cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, conne
 
     return ret
 
-def copy(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True, exclude=[]):
+def copy(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True, exclude=[]) -> None:
     """
     Copies things from one place to another.
 
@@ -203,6 +204,21 @@ def copy(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True
         to_str = to
         assert ":" not in to_str
         to = pyfra.remote.local.path(to)
+    
+    # state tracking
+    needs_set_kv = False
+    if not to.remote._no_hash:
+        with to.remote.no_hash():
+            checksum = frm.sha256sum()
+            new_hash = to.remote.update_hash("copy", to.fname, checksum)
+            try:
+                to.remote.get_kv(new_hash)
+                # if already copied, then return
+                to._set_cache("sha256sum", checksum) # set the checksum of the target file to avoid needing to calculate it again
+                print("         ---> Skipping stage")
+                return
+            except KeyError:
+                needs_set_kv = True
 
     # print info
     if not quiet: print(f"{Style.BRIGHT}{Fore.RED}*{Style.RESET_ALL} Copying {Style.BRIGHT}{frm_str} {Style.RESET_ALL}to_str {Style.BRIGHT}{to_str}{Style.RESET_ALL}")
@@ -258,6 +274,12 @@ def copy(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True
         else:
             if ":" in to_str: _rsh(to_str.split(":")[0], f"mkdir -p {par_target}", quiet=True)
             sh((f"mkdir -p {par_target}; " if par_target and ":" in frm_str else "") + f"rsync {opts} {frm_str} {to_str}", wrap=False, quiet=True)
+    
+    # set value in key value store to flag as done
+    if needs_set_kv:
+        to.remote.set_kv(new_hash, None)
+        to._set_cache("sha256sum", checksum) # set the checksum of the target file to avoid needing to calculate it again
+
 
 def ls(x='.'):
     return list(natsorted([x + '/' + fn for fn in os.listdir(x)]))

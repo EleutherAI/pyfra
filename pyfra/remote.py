@@ -21,6 +21,8 @@ from yaspin import yaspin
 import uuid
 import pyfra.utils.misc
 import abc
+from functools import wraps
+from colorama import Fore, Style
 
 
 sentinel = object()
@@ -59,11 +61,12 @@ def mutates_state(fn, hash_key=None):
     """
     Decorator that marks a function as mutating the state of the underlying environment.
     """
+    @wraps(fn)
     def wrapper(self, *args, **kwargs):
         if self._no_hash: return fn(self, *args, **kwargs)
         new_hash = self.update_hash(fn.__name__, *args, **kwargs) if hash_key is None else self.update_hash(*hash_key(fn, *args, **kwargs))
         try:
-            print("SKIPPING")
+            print("         ---> Skipping stage")
             # if hash is in the state, then we can just return that
             return self.get_kv(new_hash)
         except KeyError:
@@ -75,6 +78,24 @@ def mutates_state(fn, hash_key=None):
 
 
 # remote stuff
+def cache(fn):
+    # TODO: make global cache
+    """
+    Use as an annotation. Caches the response of the function and
+    check modification time on the file on every call.
+    """
+    @wraps(fn)
+    def wrapper(self, *args, **kwargs):
+        modified_time = self.stat().st_mtime
+        hash = pyfra.utils.misc.hash_obs(fn.__name__, args, kwargs)
+        if hash not in self._cache or modified_time != self._modified_time[hash]:
+            ret = fn(self, *args, **kwargs)
+            self._cache[hash] = ret
+            self._modified_time[hash] = modified_time
+            return ret
+        else:
+            return self._cache[hash]
+    return wrapper
 
 class RemotePath:
     """
@@ -106,49 +127,30 @@ class RemotePath:
         copy(rem2.path('goose.txt'), rem1.path('testing123.txt'))
     """
     def __init__(self, remote, fname):
-        if remote is None or remote.ip == '127.0.0.1' or remote.ip is None: remote = None
+        if remote is None: remote = local
 
-        self.remote = remote if remote is not None else local
+        self.remote = remote
         self.fname = fname
 
-        self._modified_time = None
+        self._modified_time = {}
         self._cache = {}
     
-    def rsyncstr(self):
+    def rsyncstr(self) -> str:
         return f"{self.remote}:{self.fname}" if self.remote is not None and self.remote.ip is not None else self.fname
 
-    def _to_json(self):
+    def _to_json(self) -> Dict[str, str]:
         return {
             'remote': self.remote.ip if self.remote is not None else None,
             'fname': self.fname,
         }
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"RemotePath({json.dumps(self._to_json())})"
     
-    def cache(fn):
-        # TODO: make global cache
-        """
-        Use as an annotation. Caches the response of the function and
-        check modification time on the file on every call.
-        """
-        def wrapper(self, *args, **kwargs):
-            modified_time = self.stat().st_mtime
-            hash = pyfra.utils.misc.hash_obs(fn.__name__, args, kwargs)
-            if self.stat().st_mtime != modified_time:
-                self._modified_time = modified_time
-
-                ret = fn(*args, **kwargs)
-                self._cache[hash] = ret
-                return ret
-            else:
-                return self._cache[hash]
-        return wrapper
-    
-    def _set_cache(self, fn, value, *args, **kwargs):
+    def _set_cache(self, fn_name, value, *args, **kwargs):
         modified_time = self.stat().st_mtime
         self._modified_time = modified_time
-        hash = pyfra.utils.misc.hash_obs(fn.__name__, args, kwargs)
+        hash = pyfra.utils.misc.hash_obs(fn_name, args, kwargs)
         self._cache[hash] = value
 
     def read(self) -> str:
@@ -177,7 +179,7 @@ class RemotePath:
         """
         self.remote.fwrite(self.fname, content, append)
     
-    def jread(self):
+    def jread(self) -> Dict[str, Any]:
         """
         Read the contents of this json file and parses it. Equivalent to :code:`json.loads(self.read())`
         """
@@ -322,7 +324,7 @@ class Remote:
         self.experiment = experiment
 
         self._home = None
-        self._no_hash = False
+        self._no_hash = True
 
     def env(self, envname, git=None, branch=None, python_version="3.9.4") -> Remote:
         """
@@ -484,6 +486,7 @@ class Env(Remote):
         self.wd = wd
 
         self.hash = self._hash(None)
+        self._no_hash = False
 
         if force_rerun:
             self.path(".pyfra_env_state.json").unlink()
@@ -562,7 +565,7 @@ class Env(Remote):
 
     def update_hash(self, *args, **kwargs):
         self.hash = self._hash(self.hash, *args, **kwargs)
-        print(f"***** State is now {self.hash} - {args} {kwargs}")
+        print(f"{Style.BRIGHT}[§{args[0].rjust(10)}]{Style.RESET_ALL} Starting {self.hash}")
         return self.hash
 
 local = Remote(wd=os.getcwd())
