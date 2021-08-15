@@ -210,12 +210,12 @@ def copy(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True
     needs_set_kv = False
     if not to.remote._no_hash:
         with to.remote.no_hash():
-            checksum = frm.sha256sum()
+            checksum = frm.quick_hash()
             new_hash = to.remote.update_hash("copy", to.fname, checksum)
             try:
                 to.remote.get_kv(new_hash)
                 # if already copied, then return
-                to._set_cache("sha256sum", checksum) # set the checksum of the target file to avoid needing to calculate it again
+                to._set_cache("quick_hash", checksum) # set the checksum of the target file to avoid needing to calculate it again
                 pyfra.remote._print_skip_msg(to.remote.ip, "copy", new_hash)
 
                 return
@@ -280,7 +280,7 @@ def copy(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True
     # set value in key value store to flag as done
     if needs_set_kv:
         to.remote.set_kv(new_hash, None)
-        to._set_cache("sha256sum", checksum) # set the checksum of the target file to avoid needing to calculate it again
+        to._set_cache("quick_hash", checksum) # set the checksum of the target file to avoid needing to calculate it again
 
 
 def ls(x='.'):

@@ -38,5 +38,6 @@ setuptools.setup(
         'parse',
         'natsort',
         'yaspin',
+        'imohash',
     ]
 )

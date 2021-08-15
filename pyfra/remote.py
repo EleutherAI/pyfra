@@ -24,7 +24,7 @@ import pyfra.utils.misc
 import abc
 from functools import partial, wraps
 from colorama import Fore, Style
-
+import imohash
 
 sentinel = object()
 
@@ -169,6 +169,7 @@ class RemotePath:
             with open(os.path.expanduser(self.fname)) as fh:
                 return fh.read()
         else:
+            # TODO: replace with paramiko
             nonce = random.randint(0, 99999)
             pyfra.shell.copy(self, f".tmp.{nonce}", quiet=True)
             with open(f".tmp.{nonce}") as fh:
@@ -316,6 +317,25 @@ class RemotePath:
         """
         return self.remote.sh(f"sha256sum {self.fname}", quiet=True).split(" ")[0]
 
+    @cache
+    def quick_hash(self) -> str:
+        """
+        Get a hash of this file that catches file changes most of the time
+        by hashing blocks from the file at th beginning, middle, and end.
+        Really useful for getting a quick hash of a really big file, but obviously
+        unsuitable for guaranteeing file integrity.
+
+        Uses imohash under the hood.
+        """
+        if self.remote is None:
+            return imohash.hashfile(self.fname, hexdigest=True)
+        else:
+            # TODO: use paramiko
+            # TODO: make faster by not trying to install every time
+            payload = f"import imohash,json,os; print(json.dumps(imohash.hashfile(os.path.expanduser({repr(self.fname)}), hexdigest=True)))"
+            ret = self.remote.sh(f"[ -f ~/.imohash ] || ( python -m pip --help > /dev/null 2>&1 || sudo apt-get install python3-pip -y > /dev/null 2>&1; python -m pip install imohash > /dev/null 2>&1; touch ~/.imohash ); python -c {payload | pyfra.shell.quote}", no_venv=True, pyenv_version=None, quiet=True)
+            return json.loads(ret)
+            
 
 class Remote:
     def __init__(self, ip=None, wd=None, experiment=None):
@@ -569,8 +589,8 @@ class Env(Remote):
 
     def fwrite(self, fname, content, append=False):
         # wraps fwrite to make it keep track of state hashes
-        # TODO: extract this and the one in shell.copy to a common function or something
-        
+        # TODO: replace with paramiko
+        # TODO: extract this statehash code and the one in shell.copy to a common function or something
         needs_set_kv = False
         if not self._no_hash:
             assert fname.startswith(self.wd)
