@@ -165,7 +165,7 @@ class RemotePath:
         """
         Read the contents of this file into a string
         """
-        if self.remote is None:
+        if self.remote.is_local():
             with open(os.path.expanduser(self.fname)) as fh:
                 return fh.read()
         else:
@@ -257,7 +257,7 @@ class RemotePath:
         """
         assert all(x in "_.abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ" for x in name)
 
-        if self.remote is None:
+        if self.remote.is_local():
             fn = pathlib.Path(self.fname)
             for k in name.split("."):
                 fn = getattr(fn, k)
@@ -299,7 +299,7 @@ class RemotePath:
         """
         Return a copy of this path with the home directory expanded.
         """
-        if self.remote is None:
+        if self.remote.is_local():
             return RemotePath(None, os.path.expanduser(self.fname))
         else:
             homedir = self.remote.home()
@@ -327,12 +327,17 @@ class RemotePath:
 
         Uses imohash under the hood.
         """
-        if self.remote is None:
-            return imohash.hashfile(self.fname, hexdigest=True)
+        params = {
+            "hexdigest": True,
+            "sample_size": 4 * 1024**2, # 4 MB
+            "sample_threshhold": 16 * 1024**2, # 16 MB
+        }
+        if self.remote.is_local():
+            return imohash.hashfile(self.fname, **params)
         else:
             # TODO: use paramiko
             # TODO: make faster by not trying to install every time
-            payload = f"import imohash,json,os; print(json.dumps(imohash.hashfile(os.path.expanduser({repr(self.fname)}), hexdigest=True)))"
+            payload = f"import imohash,json,os; print(json.dumps(imohash.hashfile(os.path.expanduser({repr(self.fname)}), **{params})))"
             ret = self.remote.sh(f"[ -f ~/.imohash ] || ( python -m pip --help > /dev/null 2>&1 || sudo apt-get install python3-pip -y > /dev/null 2>&1; python -m pip install imohash > /dev/null 2>&1; touch ~/.imohash ); python -c {payload | pyfra.shell.quote}", no_venv=True, pyenv_version=None, quiet=True)
             return json.loads(ret)
             
@@ -485,6 +490,9 @@ class Remote:
             yield
         finally:
             self._no_hash = False
+
+    def is_local(self):
+        return self.ip is None
 
 # env
 class Env(Remote):
