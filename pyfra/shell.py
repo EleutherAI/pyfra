@@ -1,4 +1,5 @@
 import errno
+from hashlib import new
 import os
 import random
 import re
@@ -215,7 +216,8 @@ def copy(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True
                 to.remote.get_kv(new_hash)
                 # if already copied, then return
                 to._set_cache("sha256sum", checksum) # set the checksum of the target file to avoid needing to calculate it again
-                print("         ---> Skipping stage")
+                pyfra.remote._print_skip_msg(to.remote.ip, "copy", new_hash)
+
                 return
             except KeyError:
                 needs_set_kv = True

@@ -1,5 +1,6 @@
 from __future__ import annotations
 from contextlib import contextmanager
+from hashlib import new
 from typing import *
 
 from best_download import handler
@@ -21,7 +22,7 @@ from yaspin import yaspin
 import uuid
 import pyfra.utils.misc
 import abc
-from functools import wraps
+from functools import partial, wraps
 from colorama import Fore, Style
 
 
@@ -57,6 +58,10 @@ def _normalize_homedir(x):
     return x
 
 
+def _print_skip_msg(ip, fn, hash):
+    print(f"{Style.BRIGHT}[{ip} {Style.DIM}§{Style.RESET_ALL}{Style.BRIGHT}{fn.rjust(12)}]{Style.RESET_ALL} Skipping {hash}")
+
+
 def mutates_state(fn, hash_key=None):
     """
     Decorator that marks a function as mutating the state of the underlying environment.
@@ -66,9 +71,11 @@ def mutates_state(fn, hash_key=None):
         if self._no_hash: return fn(self, *args, **kwargs)
         new_hash = self.update_hash(fn.__name__, *args, **kwargs) if hash_key is None else self.update_hash(*hash_key(fn, *args, **kwargs))
         try:
-            print("         ---> Skipping stage")
             # if hash is in the state, then we can just return that
-            return self.get_kv(new_hash)
+            ret = self.get_kv(new_hash)
+            _print_skip_msg(self.ip, fn.__name__, new_hash)
+            
+            return ret
         except KeyError:
             # otherwise, we need to run the function and save the result
             ret = fn(self, *args, **kwargs)
@@ -453,8 +460,10 @@ class Remote:
             return
 
         self._no_hash = True
-        yield
-        self._no_hash = False
+        try:
+            yield
+        finally:
+            self._no_hash = False
 
 # env
 class Env(Remote):
@@ -557,15 +566,30 @@ class Env(Remote):
             'pyenv_version': self.pyenv_version,
         }
 
-    @mutates_state
     def fwrite(self, fname, content, append=False):
         # wraps fwrite to make it keep track of state hashes
-        # TODO: make it omit the part of fname that has the env dir, we only want the relative location within the env
-        return super().fwrite(fname, content, append)
+        # TODO: extract this and the one in shell.copy to a common function or something
+        
+        needs_set_kv = False
+        if not self._no_hash:
+            assert fname.startswith(self.wd)
+            fname_suffix = fname[len(self.wd):]
+            new_hash = self.update_hash("fwrite", fname_suffix, content, append)
+            try:
+                self.get_kv(new_hash)
+                _print_skip_msg(self.ip, "fwrite", new_hash)
+                return
+            except KeyError:
+                needs_set_kv = True
+        
+        with self.no_hash():
+            super().fwrite(fname, content, append)
+
+        if needs_set_kv:
+            self.set_kv(new_hash, None)
 
     def update_hash(self, *args, **kwargs):
         self.hash = self._hash(self.hash, *args, **kwargs)
-        print(f"{Style.BRIGHT}[§{args[0].rjust(10)}]{Style.RESET_ALL} Starting {self.hash}")
         return self.hash
 
 local = Remote(wd=os.getcwd())
