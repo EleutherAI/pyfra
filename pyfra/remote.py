@@ -85,8 +85,11 @@ def mutates_state(fn, hash_key=None):
 
 
 # remote stuff
+
+# global cache
+_remotepath_cache = {}
+_remotepath_modified_time = {}
 def cache(fn):
-    # TODO: make global cache
     """
     Use as an annotation. Caches the response of the function and
     check modification time on the file on every call.
@@ -95,14 +98,15 @@ def cache(fn):
     def wrapper(self, *args, **kwargs):
         modified_time = self.stat().st_mtime
         hash = pyfra.utils.misc.hash_obs(fn.__name__, args, kwargs)
-        if hash not in self._cache or modified_time != self._modified_time[hash]:
+        if hash not in _remotepath_cache or modified_time != _remotepath_modified_time[hash]:
             ret = fn(self, *args, **kwargs)
-            self._cache[hash] = ret
-            self._modified_time[hash] = modified_time
+            _remotepath_cache[(self.remote.ip, self.fname, hash)] = ret
+            _remotepath_modified_time[(self.remote.ip, self.fname, hash)] = modified_time
             return ret
         else:
-            return self._cache[hash]
+            return _remotepath_cache[hash]
     return wrapper
+
 
 class RemotePath:
     """
@@ -138,9 +142,6 @@ class RemotePath:
 
         self.remote = remote
         self.fname = fname
-
-        self._modified_time = {}
-        self._cache = {}
     
     def rsyncstr(self) -> str:
         return f"{self.remote}:{self.fname}" if self.remote is not None and self.remote.ip is not None else self.fname
@@ -156,9 +157,9 @@ class RemotePath:
     
     def _set_cache(self, fn_name, value, *args, **kwargs):
         modified_time = self.stat().st_mtime
-        self._modified_time = modified_time
         hash = pyfra.utils.misc.hash_obs(fn_name, args, kwargs)
-        self._cache[hash] = value
+        _remotepath_modified_time[(self.remote.ip, self.fname, hash)] = modified_time
+        _remotepath_cache[(self.remote.ip, self.fname, hash)] = value
 
     def read(self) -> str:
         """
