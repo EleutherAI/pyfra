@@ -632,7 +632,12 @@ def block(fn):
             k: v.hash for k, v in envs
         }
 
-        overall_input_hash = pyfra.utils.misc.hash_obs(inp_hashes)
+        # get a hash of all the inputs, except Env objects are counted as heir hashes rather than the actual ip and wd
+        overall_input_hash = pyfra.utils.misc.hash_obs(
+            [inp_hashes[i] if i in inp_hashes else args[i] for i in range(len(args))],
+            [inp_hashes[k] if k in inp_hashes else kwargs[k] for k in sorted(kwargs.keys())]
+        )
+
         try:
             # todo: detect RemotePaths in return value and substitute if broken
 
