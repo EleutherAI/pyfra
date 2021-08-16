@@ -621,4 +621,40 @@ class Env(Remote):
         self.hash = self._hash(self.hash, *args, **kwargs)
         return self.hash
 
+
+def block(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        # get all Envs in args and kwargs
+        envs = [(i, x) for i, x in enumerate(args) if isinstance(x, Env)] + \
+            [(k, kwargs[k]) for k in sorted(kwargs.keys()) if isinstance(kwargs[k], Env)]
+        inp_hashes = {
+            k: v.hash for k, v in envs
+        }
+
+        overall_input_hash = pyfra.utils.misc.hash_obs(inp_hashes)
+        try:
+            # todo: detect RemotePaths in return value and substitute if broken
+
+            # set hashes for envs
+            new_hashes, ret = local.get_kv(overall_input_hash)
+            for k, v in new_hashes.items():
+                if isinstance(k, int):
+                    args[k].hash = v
+                else:
+                    kwargs[k].hash = v
+            print(f"Skipping block {fn.__name__}")
+        except KeyError:
+            ret = fn(*args, **kwargs)
+
+            # get hashes for envs
+            new_hashes = {
+                k: v.hash for k, v in envs
+            }
+
+            local.set_kv(overall_input_hash, (new_hashes, ret))
+        return ret
+    return wrapper
+
+
 local = Remote(wd=os.getcwd())
