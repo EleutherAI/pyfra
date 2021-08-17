@@ -632,14 +632,56 @@ def block(fn):
             k: v.hash for k, v in envs
         }
 
-        # get a hash of all the inputs, except Env objects are counted as heir hashes rather than the actual ip and wd
+        def _prepare_for_hash(ind):
+            # we want to handle Envs and RemotePaths specially:
+            # for Envs, we only care about the Env hash
+            # for RemotePaths, we only car about the quick_hash
+            if ind in inp_hashes:
+                return inp_hashes[ind]
+            elif isinstance(ind, int) and isinstance(args[ind], RemotePath):
+                return args[ind].quick_hash()
+            elif isinstance(ind, str) and isinstance(kwargs[ind], RemotePath):
+                return kwargs[ind].quick_hash()
+            elif isinstance(ind, int): # normal arg type
+                return args[ind]
+            elif isinstance(ind, str):
+                return kwargs[ind]
+            else:
+                raise Exception(f"Unknown ind type: {type(ind)}")
+
+        # get a hash of all the inputs, except Env objects are counted as their hashes rather than the actual ip and wd
         overall_input_hash = pyfra.utils.misc.hash_obs(
-            [inp_hashes[i] if i in inp_hashes else args[i] for i in range(len(args))],
-            [inp_hashes[k] if k in inp_hashes else kwargs[k] for k in sorted(kwargs.keys())]
+            [_prepare_for_hash(i) for i in range(len(args))],
+            [_prepare_for_hash(k) for k in sorted(kwargs.keys())],
         )
 
         try:
             # todo: detect RemotePaths in return value and substitute if broken
+            # todo: handle Env objects created but not returned
+
+            # the following different cases of envs passed are possible:
+            # - created in block and not returned: 
+            #     as long as the Env is never 
+            #     independently created again later, we don't need to do anything 
+            #     special to track it; if it is created again, we need some kind
+            #     of global tracking to tell it where to resume to
+            # - created in block and returned
+            #     comes for free because we save the return values. there is
+            #     the problem that if the original Env disappears we might need to 
+            #     rerun it, but we can figure that out later
+            # - passed from outside block and not returned
+            #     we Want to set the hash of the env, because it might be used 
+            #     elsewhere by the caller. global tracking would also be useful here
+            # - passed from outside block and returned
+            #     same as last case, and we can basically ignore the return
+            # - global from outside block and not returned
+            #     it would be bad if we skip this block but don't update the hash of 
+            #     the env, because it might be used elsewhere by the caller, and then 
+            #     the hash will be all wrong.
+            # - global from outside block and returned
+            #     same as last case, except it's slightly easier to detect since we 
+            #     can parse the output
+
 
             # set hashes for envs
             new_hashes, ret = local.get_kv(overall_input_hash)
@@ -663,3 +705,4 @@ def block(fn):
 
 
 local = Remote(wd=os.getcwd())
+`
