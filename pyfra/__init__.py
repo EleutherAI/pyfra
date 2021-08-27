@@ -1,7 +1,6 @@
 from colorama import init
 init()
 
-from .utils import *
 from .remote import *
 from .web import *
 from .shell import *

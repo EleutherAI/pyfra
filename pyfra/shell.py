@@ -22,7 +22,7 @@ import re
 class ShellException(Exception): pass
 
 
-__all__ = ['sh', 'copy', 'ls', 'rm', 'curl', 'wget', 'quote']
+__all__ = ['sh', 'copy', 'ls', 'rm', 'curl', 'quote']
 
 
 def _wrap_command(x, no_venv=False, pyenv_version=None):
@@ -313,16 +313,6 @@ def curl(url, max_tries=10, timeout=30): # TODO: add checksum option
         except:
             return None
         return data
-
-def wget(url, to=None, checksum=None):
-    # DEPRECATED
-    # thin wrapper for best_download
-
-    if to is None:
-        to = os.path.basename(url)
-        if not to: to = 'index'
-
-    download_file(url, to, checksum)
 
 # convenience function for shlex.quote
 class _quote:
