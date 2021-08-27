@@ -216,14 +216,14 @@ def copy(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True
                 to.remote.get_kv(new_hash)
                 # if already copied, then return
                 to._set_cache("quick_hash", checksum) # set the checksum of the target file to avoid needing to calculate it again
-                pyfra.remote._print_skip_msg(to.remote.ip, "copy", new_hash)
+                pyfra.remote._print_skip_msg(to.remote.envname, "copy", new_hash)
 
                 return
             except KeyError:
                 needs_set_kv = True
 
     # print info
-    if not quiet: print(f"{Style.BRIGHT}{Fore.RED}*{Style.RESET_ALL} Copying {Style.BRIGHT}{frm_str} {Style.RESET_ALL}to_str {Style.BRIGHT}{to_str}{Style.RESET_ALL}")
+    if not quiet: print(f"{Style.BRIGHT}{Fore.RED}*{Style.RESET_ALL} Copying {Style.BRIGHT}{frm_str} {Style.RESET_ALL}to {Style.BRIGHT}{to_str}{Style.RESET_ALL}")
 
     if frm_str[-1] == '/' and len(frm_str) > 1: frm_str = frm_str[:-1]
     if not into: frm_str += '/'

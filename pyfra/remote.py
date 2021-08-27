@@ -58,8 +58,8 @@ def _normalize_homedir(x):
     return x
 
 
-def _print_skip_msg(ip, fn, hash):
-    print(f"{Style.BRIGHT}[{ip} {Style.DIM}§{Style.RESET_ALL}{Style.BRIGHT}{fn.rjust(12)}]{Style.RESET_ALL} Skipping {hash}")
+def _print_skip_msg(envname, fn, hash):
+    print(f"{Style.BRIGHT}[{envname.ljust(15)} {Style.DIM}§{Style.RESET_ALL}{Style.BRIGHT}{fn.rjust(10)}]{Style.RESET_ALL} Skipping {hash}")
 
 
 def mutates_state(fn, hash_key=None):
@@ -73,7 +73,7 @@ def mutates_state(fn, hash_key=None):
         try:
             # if hash is in the state, then we can just return that
             ret = self.get_kv(new_hash)
-            _print_skip_msg(self.ip, fn.__name__, new_hash)
+            _print_skip_msg(self.envname, fn.__name__, new_hash)
             
             return ret
         except KeyError:
@@ -144,7 +144,7 @@ class RemotePath:
         self.fname = fname
     
     def rsyncstr(self) -> str:
-        return f"{self.remote}:{self.fname}" if self.remote is not None and self.remote.ip is not None else self.fname
+        return f"{self.remote.ip}:{self.fname}" if self.remote is not None and self.remote.ip is not None else self.fname
 
     def _to_json(self) -> Dict[str, str]:
         return {
@@ -368,9 +368,7 @@ class Remote:
             python_version (str): The python version for this environment. Defaults to the python version of this Remote.
         """
 
-        wd = f"~/pyfra_envs/{envname}"
-
-        return Env(ip=self.ip, wd=wd, git=git, branch=branch, python_version=python_version)
+        return Env(ip=self.ip, git=git, branch=branch, python_version=python_version, envname=envname)
 
     def sh(self, x, quiet=False, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False, pyenv_version=None, forward_keys=False):
         """
@@ -397,7 +395,7 @@ class Remote:
         return RemotePath(self, _normalize_homedir(os.path.join(self.wd, fname) if self.wd is not None else fname))
 
     def __repr__(self):
-        return self.ip if self.ip is not None else "127.0.0.1"
+        return (self.ip if self.ip is not None else "127.0.0.1") + ":" + self.wd
 
     def fingerprint(self):
         """
@@ -493,6 +491,12 @@ class Remote:
 
     def is_local(self):
         return self.ip is None
+    
+    def __hash__(self):
+        # this hash is not the Env hash, which represents the state inside the Env,
+        # but rather is supposed to represent the particular location this 
+        # Remote/Env is pointing to.
+        return hash((self.ip, self.wd))
 
 # env
 class Env(Remote):
@@ -518,10 +522,12 @@ class Env(Remote):
 
             return e.path("output.json")
     """
-    def __init__(self, ip=None, wd=None, git=None, branch=None, force_rerun=False, python_version="3.9.4"):
-        super().__init__(ip, wd)
+    def __init__(self, ip=None, git=None, branch=None, force_rerun=False, python_version="3.9.4", envname=None):
+        self.wd = f"~/pyfra_envs/{envname}"
+        super().__init__(ip, self.wd)
         self.pyenv_version = python_version
-        self.wd = wd
+
+        self.envname = envname
 
         self.hash = self._hash(None)
         self._no_hash = False
@@ -530,6 +536,8 @@ class Env(Remote):
             self.path(".pyfra_env_state.json").unlink()
 
         self._init_env(git, branch, python_version)
+
+        global_env_registry.register(self)
     
     @classmethod
     def _hash(cls, *args, **kwargs):
@@ -606,7 +614,7 @@ class Env(Remote):
             new_hash = self.update_hash("fwrite", fname_suffix, content, append)
             try:
                 self.get_kv(new_hash)
-                _print_skip_msg(self.ip, "fwrite", new_hash)
+                _print_skip_msg(self.envname, "fwrite", new_hash)
                 return
             except KeyError:
                 needs_set_kv = True
@@ -655,12 +663,14 @@ def block(fn):
             [_prepare_for_hash(k) for k in sorted(kwargs.keys())],
         )
 
+        global_hashes_before = global_env_registry.hashes_by_env()
+
         try:
             # todo: detect RemotePaths in return value and substitute if broken
-            # todo: handle Env objects created but not returned
+            # todo: handle Env objects that change the server they're on
 
             # the following different cases of envs passed are possible:
-            # - created in block and not returned: 
+            # - created in block and not returned:
             #     as long as the Env is never 
             #     independently created again later, we don't need to do anything 
             #     special to track it; if it is created again, we need some kind
@@ -682,27 +692,51 @@ def block(fn):
             #     same as last case, except it's slightly easier to detect since we 
             #     can parse the output
 
-
             # set hashes for envs
-            new_hashes, ret = local.get_kv(overall_input_hash)
-            for k, v in new_hashes.items():
-                if isinstance(k, int):
-                    args[k].hash = v
-                else:
-                    kwargs[k].hash = v
+            changed_hashes, ret = local.get_kv(overall_input_hash)
+
+            envs_by_ip_envname = global_env_registry.envs_by_ip_envname()
+
+            for ip, envname, orighash, newhash in changed_hashes:
+                env = envs_by_ip_envname[(ip, envname)]
+                if env.hash != orighash:
+                    print(f"WARNING: expected env {ip}:{envname} to have hash {orighash} but got {env.hash}! Did the ip change?")
+                env.hash = newhash
+                
             print(f"Skipping block {fn.__name__}")
         except KeyError:
             ret = fn(*args, **kwargs)
 
-            # get hashes for envs
-            new_hashes = {
-                k: v.hash for k, v in envs
-            }
+            global_hashes_after = global_env_registry.hashes_by_env()
 
-            local.set_kv(overall_input_hash, (new_hashes, ret))
+            # get the hashes that changed
+            changed_hashes = [
+                (k.ip, k.envname, global_hashes_before[k], global_hashes_after[k]) for k in global_hashes_after if global_hashes_before[k] != global_hashes_after[k]
+            ]
+
+            local.set_kv(overall_input_hash, (changed_hashes, ret))
         return ret
     return wrapper
 
 
+class EnvRegistry:
+    # everything here is O(n) but there shouldn't be a lot of envs so it's fine
+    def __init__(self):
+        self.envs = []
+    
+    def hashes_by_env(self):
+        return {
+            v: v.hash for v in self.envs
+        }
+    
+    def envs_by_ip_envname(self):
+        return {
+            (v.ip, v.envname): v for v in self.envs
+        }
+
+    def register(self, env):
+        self.envs.append(env)
+
+
 local = Remote(wd=os.getcwd())
-`
+global_env_registry = EnvRegistry()
