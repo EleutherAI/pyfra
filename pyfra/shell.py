@@ -1,4 +1,5 @@
 import json
+import pathlib
 import os
 import re
 import shlex
@@ -12,6 +13,7 @@ from best_download import download_file
 from colorama import Fore, Style
 from natsort import natsorted
 
+import imohash
 import pyfra.remote
 
 
@@ -319,6 +321,19 @@ def wget(url, to=None, checksum=None):
         if not to: to = 'index'
 
     download_file(url, to, checksum)
+
+def quick_hash(path):
+    params = {
+        "hexdigest": True,
+        "sample_size": 4 * 1024**2, # 4 MB
+        "sample_threshhold": 16 * 1024**2, # 16 MB
+    }
+    path = os.path.expanduser(path)
+    if pathlib.Path(path).is_dir():
+        files = list(sorted(pathlib.Path(path).glob('**/*')))
+        res = pyfra.remote._hash_obs(*[(str(f.relative_to(pathlib.Path(path))), imohash.hashfile(str(f.resolve()), **params)) for f in files if f.is_file()])[:32]
+        return json.dumps(res)
+    return json.dumps(imohash.hashfile(path, **params))
 
 # convenience function for shlex.quote
 class _quote:

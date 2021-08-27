@@ -121,7 +121,6 @@ def force_run():
         finally:
             global_env_registry.no_hash = False
 
-
 # remote stuff
 
 # global cache
@@ -332,6 +331,12 @@ class RemotePath:
         Delete this file
         """
         self._remote_payload("unlink")
+    
+    def glob(self, pattern: str) -> List[RemotePath]:
+        """
+        Find all files matching the glob pattern.
+        """
+        return [RemotePath(self.remote, f) for f in self._remote_payload("glob", pattern)]
 
     def expanduser(self) -> RemotePath:
         """
@@ -365,18 +370,18 @@ class RemotePath:
 
         Uses imohash under the hood.
         """
-        params = {
-            "hexdigest": True,
-            "sample_size": 4 * 1024**2, # 4 MB
-            "sample_threshhold": 16 * 1024**2, # 16 MB
-        }
         if self.remote.is_local():
-            return imohash.hashfile(self.fname, **params)
+            return pyfra.shell.quick_hash(self.fname)
         else:
             # TODO: use paramiko
             # TODO: make faster by not trying to install every time
-            payload = f"import imohash,json,os; print(json.dumps(imohash.hashfile(os.path.expanduser({repr(self.fname)}), **{params})))"
-            ret = self.remote.sh(f"[ -f ~/.imohash ] || ( python -m pip --help > /dev/null 2>&1 || sudo apt-get install python3-pip -y > /dev/null 2>&1; python -m pip install imohash > /dev/null 2>&1; touch ~/.imohash ); python -c {payload | pyfra.shell.quote}", no_venv=True, pyenv_version=None, quiet=True)
+            payload = f"""
+            import json,os,pathlib
+            import pyfra.shell
+
+            print(json.dumps(pyfra.shell.quick_hash(pathlib.Path(os.path.expanduser({repr(self.fname)})))))
+            """
+            ret = self.remote.sh(f"[ -f ~/.pyfra_imohash ] || ( python -m pip --help > /dev/null 2>&1 || sudo apt-get install python3-pip -y > /dev/null 2>&1; python -m pip install imohash 'pyfra>=0.3.0rc3' > /dev/null 2>&1; touch ~/.pyfra_imohash ); python -c {payload | pyfra.shell.quote}", no_venv=True, pyenv_version=None, quiet=True)
             return json.loads(ret)
             
 
