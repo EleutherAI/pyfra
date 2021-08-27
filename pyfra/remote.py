@@ -27,7 +27,7 @@ __all__ = [
     "Remote",
     "RemotePath",
     "Env",
-    "block",
+    "stage",
     "force_run",
     "local",
 ]
@@ -655,6 +655,7 @@ class Env(Remote):
     def sh(self, x, quiet=False, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False, pyenv_version=sentinel, forward_keys=False):
         """
         Run a series of bash commands on this remote. This command shares the same arguments as :func:`pyfra.shell.sh`.
+        :meta private:
         """
     
         return super().sh(x, quiet=quiet, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=pyenv_version if pyenv_version is not sentinel else self.pyenv_version, forward_keys=forward_keys)
@@ -729,6 +730,18 @@ def stage(fn):
     decorator correctly handles setting all the env hashes to what they should 
     be after the stage runs, whereas using some other generic function caching 
     would not.
+
+    Example usage: ::
+
+        @stage
+        def train_model(rem, ...):
+            e = rem.env("neo_experiment", "https://github.com/EleutherAI/gpt-neo", python_version="3.8.10")
+            e.sh("do something")
+            e.sh("do something else")
+            f = some_other_thing(e, ...)
+            return e.path("checkpoint")
+        
+        train_model(rem)
     """
     @wraps(fn)
     def wrapper(*args, **kwargs):
