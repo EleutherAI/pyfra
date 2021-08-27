@@ -378,7 +378,43 @@ class RemotePath:
             payload = f"import imohash,json,os; print(json.dumps(imohash.hashfile(os.path.expanduser({repr(self.fname)}), **{params})))"
             ret = self.remote.sh(f"[ -f ~/.imohash ] || ( python -m pip --help > /dev/null 2>&1 || sudo apt-get install python3-pip -y > /dev/null 2>&1; python -m pip install imohash > /dev/null 2>&1; touch ~/.imohash ); python -c {payload | pyfra.shell.quote}", no_venv=True, pyenv_version=None, quiet=True)
             return json.loads(ret)
-            
+
+
+class UrlPath(RemotePath):
+    """
+    Represents a file from a remote URL. Lazy until the file is used, 
+    at which point it will be downloaded to whichever remote needs it.
+    """
+    # there are 3 different ways UrlPaths can be used:
+    # 1. by calling RemotePath methods, which requires downloading to local
+    # 2. by using copy directly, which requires downloading to the tgt remote
+    # 3. by using f-string in sh, which requires downloading to the remote
+
+    def __init__(self, url: str):
+        self.url = url
+
+        self.remote = local
+        self.fname = local.path().fname
+        self._has_been_downloaded = False
+    
+    def __repr__(self):
+        return f"UrlPath({json.dumps(self.url)})"
+
+    def __getattribute__(self, name):
+        # we want to intercept all methods that are defined on RemotePath,
+        # and first download to a local file, then call the method on that file
+
+        _has_been_downloaded = object.__getattribute__(self, "_has_been_downloaded")
+
+        if name in ["__init__", "__getattribute__", "__repr__"]:
+            return object.__getattribute__(self, name)
+
+        if not _has_been_downloaded:
+            pyfra.shell.wget(self.url, self.fname)
+            object.__setattribute__(self, "_has_been_downloaded", True)
+
+        return super().__getattribute__(name)
+
 
 class Remote:
     def __init__(self, ip=None, wd=None, experiment=None):
@@ -657,6 +693,7 @@ class Env(Remote):
     def sh(self, x, quiet=False, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False, pyenv_version=sentinel, forward_keys=False):
         """
         Run a series of bash commands on this remote. This command shares the same arguments as :func:`pyfra.shell.sh`.
+    
         :meta private:
         """
     
