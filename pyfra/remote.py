@@ -23,6 +23,14 @@ from pyfra.setup import install_pyenv
 
 sentinel = object()
 
+__all__ = [
+    "Remote",
+    "RemotePath",
+    "Env",
+    "block",
+    "force_run",
+    "local",
+]
 
 def _normalize_homedir(x):
     """ Essentially expanduser(path.join("~", x)) but remote-agnostic """
