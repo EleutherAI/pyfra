@@ -282,6 +282,17 @@ def copy(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True
 def ls(x='.'):
     return list(natsorted([x + '/' + fn for fn in os.listdir(x)]))
 
+def rm(x, no_exists_ok=True):
+    # from https://stackoverflow.com/a/41789397
+    if not os.path.exists(x) and no_exists_ok: return
+
+    if os.path.isfile(x) or os.path.islink(x):
+        os.remove(x)  # remove the file
+    elif os.path.isdir(x):
+        shutil.rmtree(x)  # remove dir and all contains
+    else:
+        raise ValueError("file {} is not a file or dir.".format(x))
+
 def curl(url, max_tries=10, timeout=30): # TODO: add checksum option
     cooldown = 1
     for i in range(max_tries):
