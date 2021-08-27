@@ -87,6 +87,9 @@ def mutates_state(fn, hash_key=None):
         if self._no_hash: return fn(self, *args, **kwargs)
         new_hash = self.update_hash(fn.__name__, *args, **kwargs) if hash_key is None else self.update_hash(*hash_key(fn, *args, **kwargs))
         try:
+            # if globally we want to ignore hashes, we force a keyerror to run the function again
+            if global_env_registry.no_hash: raise KeyError
+
             # if hash is in the state, then we can just return that
             ret = self.get_kv(new_hash)
             _print_skip_msg(self.envname, fn.__name__, new_hash)
@@ -98,6 +101,22 @@ def mutates_state(fn, hash_key=None):
             self.set_kv(new_hash, ret)
             return ret
     return wrapper
+
+
+@contextmanager
+def force_run():
+    """
+    Use as a context manager to force all Envs to ignore cached results.
+    Doesn't affect @blocks, which will continue to cache
+    """
+    if global_env_registry.no_hash:
+        yield
+    else:
+        global_env_registry.no_hash = True
+        try:
+            yield
+        finally:
+            global_env_registry.no_hash = False
 
 
 # remote stuff
@@ -739,6 +758,7 @@ class EnvRegistry:
     # everything here is O(n) but there shouldn't be a lot of envs so it's fine
     def __init__(self):
         self.envs = []
+        self.no_hash = False
     
     def hashes_by_env(self):
         return {
