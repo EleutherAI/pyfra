@@ -18,9 +18,9 @@ Features:
  - Extremely elegant shell integration—run commands on any server seamlessly. All the best parts of bash and python combined
  - Handle files on remote servers with a pathlib-like interface the same way you would local files (WIP, partially implemented)
  - Automated remote environment setup, so you never have to worry about provisioning machines by hand again
+ - Idempotent resumable data and training pipelines with no cognitive overhead
  - Spin up an internal webserver complete with a permissions system using only a few lines of code
  - (Coming soon) High level API for experiment management/scheduling and resource provisioning
- - (Coming soon) Idempotent resumable data pipelines with no cognitive overhead
 
 Want to dive in? See the [documentation](https://pyfra.readthedocs.io/en/latest/).
 
