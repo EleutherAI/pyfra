@@ -435,7 +435,7 @@ class Remote:
     def __repr__(self):
         return (self.ip if self.ip is not None else "127.0.0.1") + ":" + self.wd
 
-    def fingerprint(self):
+    def fingerprint(self) -> str:
         """
         A unique string for the server that this Remote is pointing to. 
         """
@@ -452,16 +452,28 @@ class Remote:
             'wd': self.wd,
         }
 
-    def ls(self, x='.'):
+    def ls(self, x='.') -> List[str]:
+        """
+        Lists files, sorted by natsort.
+
+        Args:
+            x (str): The directory to list. Defaults to current directory.
+        """
         return list(natsorted(self.sh(f"ls {x} | cat").strip().split("\n")))
      
-    def home(self):
+    def home(self) -> str:
+        """
+        The home directory on the remote.
+        """
         if self._home is None:
             self._home = self.sh("echo $HOME", quiet=True).strip()
         
         return self._home
 
-    def fwrite(self, fname, content, append=False):
+    def fwrite(self, fname, content, append=False) -> None:
+        """
+        :meta private:
+        """
         if self.ip is None:
             with open(os.path.expanduser(fname), 'a' if append else 'w') as fh:
                 fh.write(content)
@@ -523,7 +535,14 @@ class Remote:
     
     @contextmanager
     def no_hash(self):
-        """ Context manager to turn off hashing temporarily """
+        """ 
+        Context manager to turn off hashing temporarily.
+        Example usage: :: 
+            print(env.hash)
+            with env.no_hash():
+                env.sh("echo do something")
+            print(env.hash) # will be the same as before
+        """
         if self._no_hash:
             yield
             return
@@ -535,6 +554,9 @@ class Remote:
             self._no_hash = False
 
     def is_local(self):
+        """
+        Returns true if this is a local remote/environment.
+        """
         return self.ip is None
     
     def __hash__(self):
@@ -585,11 +607,11 @@ class Env(Remote):
         global_env_registry.register(self)
     
     @classmethod
-    def _hash(cls, *args, **kwargs):
+    def _hash(cls, *args, **kwargs) -> str:
         return _hash_obs([args, kwargs])
 
     @_mutates_state
-    def _init_env(self, git, branch, python_version):
+    def _init_env(self, git, branch, python_version) -> None:
         with yaspin(text="Loading", color="white") as spinner, self.no_hash():
             ip = self.ip
             wd = self.wd
@@ -634,21 +656,21 @@ class Env(Remote):
     
         return super().sh(x, quiet=quiet, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=pyenv_version if pyenv_version is not sentinel else self.pyenv_version, forward_keys=forward_keys)
 
-    def _install(self, python_version):   
+    def _install(self, python_version) -> None:   
         # set up remote python version
         if python_version is not None: install_pyenv(self, python_version)
 
         # install rsync for copying files
         self.sh("rsync --help > /dev/null || ( sudo apt-get update && sudo apt-get install -y rsync )", quiet=True)
 
-    def _to_json(self):
+    def _to_json(self) -> dict:
         return {
             'ip': self.ip,
             'wd': self.wd,
             'pyenv_version': self.pyenv_version,
         }
 
-    def fwrite(self, fname, content, append=False):
+    def fwrite(self, fname, content, append=False) -> None:
         """
         :meta private:
         """
@@ -673,7 +695,7 @@ class Env(Remote):
         if needs_set_kv:
             self.set_kv(new_hash, None)
 
-    def update_hash(self, *args, **kwargs):
+    def update_hash(self, *args, **kwargs) -> str:
         """
         :meta private:
         """
