@@ -71,7 +71,7 @@ class _ObjectEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
-def hash_obs(*args):
+def _hash_obs(*args):
     jsonobj = json.dumps(args, sort_keys=True, cls=_ObjectEncoder)
     arghash = hashlib.sha256(jsonobj.encode()).hexdigest()
     return arghash
@@ -81,7 +81,7 @@ def _print_skip_msg(envname, fn, hash):
     print(f"{Style.BRIGHT}[{envname.ljust(15)} {Style.DIM}§{Style.RESET_ALL}{Style.BRIGHT}{fn.rjust(10)}]{Style.RESET_ALL} Skipping {hash}")
 
 
-def mutates_state(fn, hash_key=None):
+def _mutates_state(fn, hash_key=None):
     """
     Decorator that marks a function as mutating the state of the underlying environment.
     """
@@ -127,7 +127,7 @@ def force_run():
 # global cache
 _remotepath_cache = {}
 _remotepath_modified_time = {}
-def cache(fn):
+def _cache(fn):
     """
     Use as an annotation. Caches the response of the function and
     check modification time on the file on every call.
@@ -135,7 +135,7 @@ def cache(fn):
     @wraps(fn)
     def wrapper(self, *args, **kwargs):
         modified_time = self.stat().st_mtime
-        hash = hash_obs(fn.__name__, args, kwargs)
+        hash = _hash_obs(fn.__name__, args, kwargs)
         if hash not in _remotepath_cache or modified_time != _remotepath_modified_time[hash]:
             ret = fn(self, *args, **kwargs)
             _remotepath_cache[(self.remote.ip, self.fname, hash)] = ret
@@ -195,7 +195,7 @@ class RemotePath:
     
     def _set_cache(self, fn_name, value, *args, **kwargs):
         modified_time = self.stat().st_mtime
-        hash = hash_obs(fn_name, args, kwargs)
+        hash = _hash_obs(fn_name, args, kwargs)
         _remotepath_modified_time[(self.remote.ip, self.fname, hash)] = modified_time
         _remotepath_cache[(self.remote.ip, self.fname, hash)] = value
 
@@ -348,14 +348,14 @@ class RemotePath:
     def __div__(self, other):
         return RemotePath(self.remote, os.path.join(self.fname, other))
 
-    @cache
+    @_cache
     def sha256sum(self) -> str:
         """
         Return the sha256sum of this file.
         """
         return self.remote.sh(f"sha256sum {self.fname}", quiet=True).split(" ")[0]
 
-    @cache
+    @_cache
     def quick_hash(self) -> str:
         """
         Get a hash of this file that catches file changes most of the time
@@ -579,9 +579,9 @@ class Env(Remote):
     
     @classmethod
     def _hash(cls, *args, **kwargs):
-        return hash_obs([args, kwargs])
+        return _hash_obs([args, kwargs])
 
-    @mutates_state
+    @_mutates_state
     def _init_env(self, git, branch, python_version):
         with yaspin(text="Loading", color="white") as spinner, self.no_hash():
             ip = self.ip
@@ -619,7 +619,7 @@ class Env(Remote):
             spinner.color = "green"
             spinner.ok("OK ")
 
-    @mutates_state
+    @_mutates_state
     def sh(self, x, quiet=False, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False, pyenv_version=sentinel, forward_keys=False):
         """
         Run a series of bash commands on this remote. This command shares the same arguments as :func:`pyfra.shell.sh`.
@@ -696,7 +696,7 @@ def block(fn):
                 raise Exception(f"Unknown ind type: {type(ind)}")
 
         # get a hash of all the inputs, except Env objects are counted as their hashes rather than the actual ip and wd
-        overall_input_hash = hash_obs(
+        overall_input_hash = _hash_obs(
             [_prepare_for_hash(i) for i in range(len(args))],
             [_prepare_for_hash(k) for k in sorted(kwargs.keys())],
         )
@@ -757,7 +757,7 @@ def block(fn):
     return wrapper
 
 
-class EnvRegistry:
+class _EnvRegistry:
     # everything here is O(n) but there shouldn't be a lot of envs so it's fine
     def __init__(self):
         self.envs = []
@@ -778,4 +778,4 @@ class EnvRegistry:
 
 
 local = Remote(wd=os.getcwd())
-global_env_registry = EnvRegistry()
+global_env_registry = _EnvRegistry()

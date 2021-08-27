@@ -22,16 +22,6 @@ pyfra.shell module
    :undoc-members:
    :show-inheritance:
 
-pyfra.web module
-=================================
-
-.. automodule:: pyfra.web
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-
-
 Indices and tables
 ==================
 
