@@ -332,8 +332,8 @@ def quick_hash(path):
     if pathlib.Path(path).is_dir():
         files = list(sorted(pathlib.Path(path).glob('**/*')))
         res = pyfra.remote._hash_obs(*[(str(f.relative_to(pathlib.Path(path))), imohash.hashfile(str(f.resolve()), **params)) for f in files if f.is_file()])[:32]
-        return json.dumps(res)
-    return json.dumps(imohash.hashfile(path, **params))
+        return res
+    return imohash.hashfile(path, **params)
 
 # convenience function for shlex.quote
 class _quote:

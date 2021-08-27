@@ -376,12 +376,13 @@ class RemotePath:
             # TODO: use paramiko
             # TODO: make faster by not trying to install every time
             payload = f"""
-            import json,os,pathlib
-            import pyfra.shell
+import json,os,pathlib
+import pyfra.shell
 
-            print(json.dumps(pyfra.shell.quick_hash(pathlib.Path(os.path.expanduser({repr(self.fname)})))))
-            """
-            ret = self.remote.sh(f"[ -f ~/.pyfra_imohash ] || ( python -m pip --help > /dev/null 2>&1 || sudo apt-get install python3-pip -y > /dev/null 2>&1; python -m pip install imohash 'pyfra>=0.3.0rc3' > /dev/null 2>&1; touch ~/.pyfra_imohash ); python -c {payload | pyfra.shell.quote}", no_venv=True, pyenv_version=None, quiet=True)
+print(pyfra.shell.quick_hash(pathlib.Path(os.path.expanduser({repr(self.fname)}))))
+            """.strip()
+            ret = self.remote.sh(f"[ -f ~/.pyfra_imohash ] || ( python -m pip --help > /dev/null 2>&1 || sudo apt-get install python3-pip -y > /dev/null 2>&1; python -m pip install imohash 'pyfra>=0.3.0rc5' > /dev/null 2>&1; touch ~/.pyfra_imohash ); python -c {payload | pyfra.shell.quote}", no_venv=True, pyenv_version=None, quiet=True).strip()
+
             return json.loads(ret)
             
 
