@@ -397,16 +397,12 @@ class Remote:
         self._home = None
         self._no_hash = True
 
-    def env(self, envname, git=None, branch=None, python_version="3.9.4") -> Remote:
+    def env(self, envname, git=None, branch=None, force_rerun=False, python_version="3.9.4") -> Remote:
         """
-        Args:
-            envname (str): The name for the environment.
-            git (str): A git repo to clone for the environment. If the repo already exists it (and any local changes) will be reset and overwritten with a fresh clone. If None, nothing will be cloned. The requirements.txt will be automatically installed in the virtualenv.
-            branch (str): Check out a particular branch. Defaults to whatever the repo default is.
-            python_version (str): The python version for this environment. Defaults to the python version of this Remote.
+        Arguments are the same as the :class:`pyfra.experiment.Experiment` constructor.
         """
 
-        return Env(ip=self.ip, git=git, branch=branch, python_version=python_version, envname=envname)
+        return Env(ip=self.ip, envname=envname, git=git, branch=branch, force_rerun=force_rerun, python_version=python_version)
 
     def sh(self, x, quiet=False, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False, pyenv_version=None, forward_keys=False):
         """
@@ -574,7 +570,7 @@ class Env(Remote):
 
     A typical design pattern sees functions accepting remotes as argument and immediately turning it into an env that's used for the rest of the function. Alternatively, functions can take in already-created envs and perform some task inside the env.
 
-    See :class:`pyfra.remote.Remote` for more information about methods.
+    See :class:`pyfra.remote.Remote` for more information about methods. Envs can be created from an existing Remote using :meth:`pyfra.remote.Remote.env`.
 
     Example usage: ::
 
@@ -591,8 +587,14 @@ class Env(Remote):
 
             return env.path("output.json")
 
+    Args:
+        ip (str): The host to ssh to. This looks something like :code:`12.34.56.78` or :code:`goose.com` or :code:`someuser@12.34.56.78` or :code:`someuser@goose.com`. You must enable passwordless ssh and have your ssh key added to the server first. If None, the Remote represents localhost.
+        git (str): The git repo to clone into the fresh env. If None, no git repo is cloned.
+        branch (str): The git branch to clone. If None, the default branch is used.
+        force_rerun (bool): If True, all hashing will be disabled and everything will be run every time.
+        python_version (str): The python version to use.
     """
-    def __init__(self, ip=None, git=None, branch=None, force_rerun=False, python_version="3.9.4", envname=None):
+    def __init__(self, ip=None, envname=None, git=None, branch=None, force_rerun=False, python_version="3.9.4"):
         self.wd = f"~/pyfra_envs/{envname}"
         super().__init__(ip, self.wd)
         self.pyenv_version = python_version
