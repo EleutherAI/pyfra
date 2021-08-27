@@ -1,22 +1,17 @@
-import errno
-from hashlib import new
+import json
 import os
-import random
 import re
 import shlex
 import shutil
 import subprocess
 import sys
 import time
-from typing import Union
 import urllib
-import json
 
-from best_download import download_file
 from colorama import Fore, Style
 from natsort import natsorted
+
 import pyfra.remote
-import re
 
 
 class ShellException(Exception): pass

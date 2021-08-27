@@ -1,11 +1,11 @@
 import os
-from shlex import quote
-import sys
 import pathlib
-import time
+import sys
+from shlex import quote
 
-import pyfra.shell
 import pyfra.remote
+import pyfra.shell
+
 
 class Experiment:
     def __init__(self, experiment_name, experiment_server=None):
