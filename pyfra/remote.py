@@ -459,6 +459,12 @@ class Remote:
         """
         return list(natsorted(self.sh(f"ls {x} | cat").strip().split("\n")))
      
+    def rm(self, x, no_exists_ok=True):
+        """
+        Remove a file or directory.
+        """
+        self.sh(f"cd ~; rm -rf {self.path(x).fname}", ignore_errors=no_exists_ok)
+
     def home(self) -> str:
         """
         The home directory on the remote.
