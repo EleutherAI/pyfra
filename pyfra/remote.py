@@ -110,7 +110,7 @@ def _mutates_state(fn, hash_key=None):
 def force_run():
     """
     Use as a context manager to force all Envs to ignore cached results.
-    Doesn't affect @blocks, which will continue to cache
+    Doesn't affect @stages, which will continue to cache
     """
     if global_env_registry.no_hash:
         yield
@@ -437,7 +437,9 @@ class Remote:
 
     def fingerprint(self) -> str:
         """
-        A unique string for the server that this Remote is pointing to. 
+        A unique string for the server that this Remote is pointing to. Useful for detecting
+        if the server has been yanked under you, or if this different ip actually points
+        to the same server, etc.
         """
         self.sh("if [ ! -f ~/.pyfra.fingerprint ]; then cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1 > ~/.pyfra.fingerprint; fi", quiet=True)
         tmpname = ".fingerprint." + str(random.randint(0, 99999))
@@ -703,7 +705,30 @@ class Env(Remote):
         return self.hash
 
 
-def block(fn):
+def stage(fn):
+    """
+    This decorator is used to mark a function as a "stage".
+
+    The purpose of this stage abstraction is for cases where you have some 
+    collection of operations that accomplish some goal and the way this goal
+    is accomplished is intended to be abstracted away. Some examples would be 
+    tokenization, model training, or evaluation. After a stage runs once, the 
+    return value will be cached and subsequent calls with the same arguments 
+    will return the cached value. 
+    
+    However, there are several subtleties to the usage of stages. First, you 
+    might be wondering why we need this if Env already resumes where it left 
+    off. The main reason behind this is that since the way a stage accomplises 
+    its goal is meant to be abstracted away, it is possible that the stage will 
+    have changed in implementation, thus invalidating the hash (for example, 
+    the stage is switched to use a more efficient tokenizer that outputs the 
+    same thing). In these cases, just using Env hashing would rerun everything 
+    even when we know we don't need to. Also, any other expensive operations 
+    that are not Env operations will still run every time. Finally, this 
+    decorator correctly handles setting all the env hashes to what they should 
+    be after the stage runs, whereas using some other generic function caching 
+    would not.
+    """
     @wraps(fn)
     def wrapper(*args, **kwargs):
         # get all Envs in args and kwargs
