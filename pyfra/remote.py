@@ -546,9 +546,9 @@ class Remote:
 # env
 class Env(Remote):
     """
-    An environment is a Remote pointing to a directory that has a virtualenv and a specific version version of python installed, optionally initialized from a git repo. Since environments are also just Remotes, all methods on Remotes work on environments too (including env itself, which makes a nested environment within that invironment with no problems whatsoever).
+    An environment is a Remote pointing to a directory that has a virtualenv and a specific version version of python installed, optionally initialized from a git repo. Since environments are also just Remotes, all methods on Remotes work on environments too.
 
-    A typical design pattern sees functions accepting remotes as argument and immediately turning it into an env that's used for the rest of the function. 
+    A typical design pattern sees functions accepting remotes as argument and immediately turning it into an env that's used for the rest of the function. Alternatively, functions can take in already-created envs and perform some task inside the env.
 
     Example usage: ::
 
