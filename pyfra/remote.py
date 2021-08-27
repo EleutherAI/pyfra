@@ -588,6 +588,7 @@ class Env(Remote):
             env.sh("do something else")
 
             return env.path("output.json")
+
     """
     def __init__(self, ip=None, git=None, branch=None, force_rerun=False, python_version="3.9.4", envname=None):
         self.wd = f"~/pyfra_envs/{envname}"
