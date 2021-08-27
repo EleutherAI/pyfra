@@ -574,6 +574,8 @@ class Env(Remote):
 
     A typical design pattern sees functions accepting remotes as argument and immediately turning it into an env that's used for the rest of the function. Alternatively, functions can take in already-created envs and perform some task inside the env.
 
+    See :class:`pyfra.remote.Remote` for more information about methods.
+
     Example usage: ::
 
         def train_model(rem, ...):
