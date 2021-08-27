@@ -295,7 +295,7 @@ class RemotePath:
         assert all(x in "_.abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ" for x in name)
 
         if self.remote.is_local():
-            fn = pathlib.Path(self.fname)
+            fn = pathlib.Path(self.fname).expanduser()
             for k in name.split("."):
                 fn = getattr(fn, k)
             return fn(*args, **kwargs)
@@ -383,7 +383,8 @@ print(pyfra.shell.quick_hash(pathlib.Path(os.path.expanduser({repr(self.fname)})
             """.strip()
             ret = self.remote.sh(f"[ -f ~/.pyfra_imohash ] || ( python -m pip --help > /dev/null 2>&1 || sudo apt-get install python3-pip -y > /dev/null 2>&1; python -m pip install imohash 'pyfra>=0.3.0rc5' > /dev/null 2>&1; touch ~/.pyfra_imohash ); python -c {payload | pyfra.shell.quote}", no_venv=True, pyenv_version=None, quiet=True).strip()
 
-            return json.loads(ret)
+            assert all(x in "0123456789abcdef" for x in ret[:32])
+            return ret[:32]
             
 
 class Remote:

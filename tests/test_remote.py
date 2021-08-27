@@ -18,6 +18,7 @@ def setup_remote(ind):
 
     ip = sh("docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' pyfra_test_remote_" + str(ind))
     rem = Remote("root@"+ip)
+    rem.sh("rm -rf pyfra_envs")
     return rem
 
 
