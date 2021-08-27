@@ -2,6 +2,11 @@
 import pyfra.remote
 import pyfra.shell
 
+__all__ = [
+    'apt',
+    'install_pyenv',
+    'ensure_supported',
+]
 
 def apt(r, packages):
     # install sudo if it's not installed; this is the case in some docker containers
@@ -9,6 +14,8 @@ def apt(r, packages):
 
 
 def ensure_supported(r):
+    # todo: wire this up to something
+    
     supported = [
         "Ubuntu 18", "Ubuntu 20", 
         "stretch"   # debian stretch
