@@ -8,6 +8,7 @@ import sys
 import time
 import urllib
 
+from best_download import download_file
 from colorama import Fore, Style
 from natsort import natsorted
 
@@ -308,6 +309,16 @@ def curl(url, max_tries=10, timeout=30): # TODO: add checksum option
         except:
             return None
         return data
+
+def wget(url, to=None, checksum=None):
+    # DEPRECATED
+    # thin wrapper for best_download
+
+    if to is None:
+        to = os.path.basename(url)
+        if not to: to = 'index'
+
+    download_file(url, to, checksum)
 
 # convenience function for shlex.quote
 class _quote:
