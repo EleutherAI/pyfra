@@ -583,13 +583,11 @@ class Env(Remote):
             f = some_other_thing(e, ...)
             e.path("goose.txt").write(f.jread()["honk"])
         
-        def some_other_thing(rem, ...):
-            # this makes an env inside the other env
-            e = rem.env("other_thing", "https://github.com/EleutherAI/thing-doer-5000", python_version="3.8.10")
-            e.sh("do something")
-            e.sh("do something else")
+        def some_other_thing(env, ...):
+            env.sh("do something")
+            env.sh("do something else")
 
-            return e.path("output.json")
+            return env.path("output.json")
     """
     def __init__(self, ip=None, git=None, branch=None, force_rerun=False, python_version="3.9.4", envname=None):
         self.wd = f"~/pyfra_envs/{envname}"
