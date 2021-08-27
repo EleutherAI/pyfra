@@ -22,14 +22,6 @@ pyfra.shell module
    :undoc-members:
    :show-inheritance:
 
-pyfra.utils.misc module
-=================================
-
-.. automodule:: pyfra.utils.misc
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 pyfra.web module
 =================================
 

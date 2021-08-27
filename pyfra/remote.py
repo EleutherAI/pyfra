@@ -20,11 +20,11 @@ import io
 import pathlib
 from yaspin import yaspin
 import uuid
-import pyfra.utils.misc
 import abc
 from functools import partial, wraps
 from colorama import Fore, Style
 import imohash
+import hashlib
 
 sentinel = object()
 
@@ -56,6 +56,22 @@ def _normalize_homedir(x):
     if x[-1] == '/' and len(x) > 1: x = x[:-1]
     
     return x
+
+
+class _ObjectEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, pyfra.remote.RemotePath):
+            return obj.sha256sum()
+        if hasattr(obj, "_to_json"):
+            return obj._to_json()
+        
+        return super().default(obj)
+
+
+def hash_obs(*args):
+    jsonobj = json.dumps(args, sort_keys=True, cls=_ObjectEncoder)
+    arghash = hashlib.sha256(jsonobj.encode()).hexdigest()
+    return arghash
 
 
 def _print_skip_msg(envname, fn, hash):
@@ -97,7 +113,7 @@ def cache(fn):
     @wraps(fn)
     def wrapper(self, *args, **kwargs):
         modified_time = self.stat().st_mtime
-        hash = pyfra.utils.misc.hash_obs(fn.__name__, args, kwargs)
+        hash = hash_obs(fn.__name__, args, kwargs)
         if hash not in _remotepath_cache or modified_time != _remotepath_modified_time[hash]:
             ret = fn(self, *args, **kwargs)
             _remotepath_cache[(self.remote.ip, self.fname, hash)] = ret
@@ -157,7 +173,7 @@ class RemotePath:
     
     def _set_cache(self, fn_name, value, *args, **kwargs):
         modified_time = self.stat().st_mtime
-        hash = pyfra.utils.misc.hash_obs(fn_name, args, kwargs)
+        hash = hash_obs(fn_name, args, kwargs)
         _remotepath_modified_time[(self.remote.ip, self.fname, hash)] = modified_time
         _remotepath_cache[(self.remote.ip, self.fname, hash)] = value
 
@@ -541,7 +557,7 @@ class Env(Remote):
     
     @classmethod
     def _hash(cls, *args, **kwargs):
-        return pyfra.utils.misc.hash_obs([args, kwargs])
+        return hash_obs([args, kwargs])
 
     @mutates_state
     def _init_env(self, git, branch, python_version):
@@ -658,7 +674,7 @@ def block(fn):
                 raise Exception(f"Unknown ind type: {type(ind)}")
 
         # get a hash of all the inputs, except Env objects are counted as their hashes rather than the actual ip and wd
-        overall_input_hash = pyfra.utils.misc.hash_obs(
+        overall_input_hash = hash_obs(
             [_prepare_for_hash(i) for i in range(len(args))],
             [_prepare_for_hash(k) for k in sorted(kwargs.keys())],
         )

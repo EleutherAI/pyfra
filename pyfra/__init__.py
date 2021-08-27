@@ -2,13 +2,11 @@ from colorama import init
 init()
 
 from .utils import *
-from .functional import *
 from .remote import *
 from .web import *
 from .shell import *
 from .experiment import *
 
-from .contrib import *
 
 # fallback snippet from https://github.com/gruns/icecream
 try:

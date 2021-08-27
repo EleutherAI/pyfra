@@ -1,4 +1,4 @@
-import pyfra.utils.misc
+import pyfra.remote
 import pyfra.shell
 from functools import wraps, partial
 
@@ -13,6 +13,8 @@ def ensure_supported(r):
         "Ubuntu 18", "Ubuntu 20", 
         "stretch"   # debian stretch
     ]
+
+    @pyfra.remote.block
     def _f(r):
         print("Checking if", r, "is running a supported distro")
 
@@ -21,7 +23,7 @@ def ensure_supported(r):
             for ver in supported
         ])
 
-    pyfra.utils.misc.once(partial(_f, r), name="ensure_supported;" + r.fingerprint)()
+    _f(r)
 
 ## things to install
 
