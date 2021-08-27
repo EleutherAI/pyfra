@@ -485,6 +485,8 @@ class Remote:
         file is moved each time) but there shouldn't be a lot of data stored in it anyways
         (premature optimization is bad), and if we need to store a lot of data in the future 
         we can always make this more efficient without changing the interface.
+        
+        :meta private:
         """
         with self.no_hash():
             # TODO: make more efficient
@@ -500,6 +502,8 @@ class Remote:
     def get_kv(self, key: str) -> Any:
         """
         Retrieve a value from the state file.
+
+        :meta private:
         """
         with self.no_hash():
             # TODO: make more efficient
@@ -512,6 +516,9 @@ class Remote:
             return pickle.loads(ob[key].encode())
 
     def update_hash(self, *args, **kwargs):
+        """
+        :meta private:
+        """
         pass
     
     @contextmanager
@@ -642,6 +649,9 @@ class Env(Remote):
         }
 
     def fwrite(self, fname, content, append=False):
+        """
+        :meta private:
+        """
         # wraps fwrite to make it keep track of state hashes
         # TODO: replace with paramiko
         # TODO: extract this statehash code and the one in shell.copy to a common function or something
@@ -664,6 +674,9 @@ class Env(Remote):
             self.set_kv(new_hash, None)
 
     def update_hash(self, *args, **kwargs):
+        """
+        :meta private:
+        """
         self.hash = self._hash(self.hash, *args, **kwargs)
         return self.hash
 
