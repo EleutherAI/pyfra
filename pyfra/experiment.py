@@ -6,6 +6,7 @@ from shlex import quote
 import pyfra.remote
 import pyfra.shell
 
+__all__ = ["Experiment"]
 
 class Experiment:
     def __init__(self, experiment_name, experiment_server=None):
