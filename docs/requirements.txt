@@ -20,3 +20,6 @@ wtforms[email]
 
 sphinx==4.0.2
 sphinxcontrib-napoleon==0.7
+
+imohash
+yaspin
