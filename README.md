@@ -26,6 +26,8 @@ Want to dive in? See the [documentation](https://pyfra.readthedocs.io/en/latest/
 
 ## Example code
 
+(This example obviously doesn't run as-is, it's just an illustrative example)
+
 ```python
 from pyfra import *
 
