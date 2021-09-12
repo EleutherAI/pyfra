@@ -6,6 +6,8 @@ from .web import *
 from .shell import *
 from .experiment import *
 
+import pyfra.contrib as contrib
+
 
 # fallback snippet from https://github.com/gruns/icecream
 try:

@@ -20,7 +20,7 @@ import pyfra.remote
 class ShellException(Exception): pass
 
 
-__all__ = ['sh', 'copy', 'ls', 'curl', 'quote']
+__all__ = ['sh', 'copy', 'ls', 'curl', 'quote', 'ShellException']
 
 
 def _wrap_command(x, no_venv=False, pyenv_version=None):
