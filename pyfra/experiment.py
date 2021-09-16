@@ -17,7 +17,7 @@ class Experiment:
 
     def delegate(self, rem):
         tmux_name = f"pyfra_delegated_{self.experiment_name}"
-        if isinstance(rem, str): rem = self.remote(rem)
+        if isinstance(rem, str): rem = pyfra.remote.Remote(rem)
     
         if "PYFRA_DELEGATED" in os.environ:
             return

@@ -119,6 +119,8 @@ def set_password(username: str):
 
 
 def webserver(debug=False):
+    basedir = os.getcwd() + '/state'
+    os.makedirs(basedir, exist_ok=True)
     with app.app_context():
         migrations_path = os.path.join(os.path.dirname(__file__), "migrations")
         upgrade(migrations_path) # equivalent to running "flask db upgrade" every load
