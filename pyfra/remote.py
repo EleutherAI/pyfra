@@ -81,29 +81,45 @@ def _print_skip_msg(envname, fn, hash):
     print(f"{Style.BRIGHT}[{envname.ljust(15)} {Style.DIM}§{Style.RESET_ALL}{Style.BRIGHT}{fn.rjust(10)}]{Style.RESET_ALL} Skipping {hash}")
 
 
-def _mutates_state(fn, hash_key=None):
+def _git_hash_key(fn, self, git, branch, python_version):
+    origin_branch_hash = None
+    
+    if git is not None:
+        # check hash of remote to see if we need to clone
+        with self.no_hash():
+            try:
+                origin_branch_hash = self.sh(f"git ls-remote https://github.com/gturri/dokuJClient.git refs/heads/{branch} | awk '{{ print $1}}'", quiet=True).strip()
+            except pyfra.shell.ShellException:
+                pass
+
+    return (fn.__name__, origin_branch_hash, python_version)
+
+
+def _mutates_state(hash_key=None):
     """
     Decorator that marks a function as mutating the state of the underlying environment.
     """
-    @wraps(fn)
-    def wrapper(self, *args, **kwargs):
-        if self._no_hash: return fn(self, *args, **kwargs)
-        new_hash = self.update_hash(fn.__name__, *args, **kwargs) if hash_key is None else self.update_hash(*hash_key(fn, *args, **kwargs))
-        try:
-            # if globally we want to ignore hashes, we force a keyerror to run the function again
-            if global_env_registry.no_hash: raise KeyError
+    def _f(fn):
+        @wraps(fn)
+        def wrapper(self, *args, **kwargs):
+            if self._no_hash: return fn(self, *args, **kwargs)
+            new_hash = self.update_hash(fn.__name__, *args, **kwargs) if hash_key is None else self.update_hash(*hash_key(fn, self, *args, **kwargs))
+            try:
+                # if globally we want to ignore hashes, we force a keyerror to run the function again
+                if global_env_registry.no_hash: raise KeyError
 
-            # if hash is in the state, then we can just return that
-            ret = self.get_kv(new_hash)
-            _print_skip_msg(self.envname, fn.__name__, new_hash)
-            
-            return ret
-        except KeyError:
-            # otherwise, we need to run the function and save the result
-            ret = fn(self, *args, **kwargs)
-            self.set_kv(new_hash, ret)
-            return ret
-    return wrapper
+                # if hash is in the state, then we can just return that
+                ret = self.get_kv(new_hash)
+                _print_skip_msg(self.envname, fn.__name__, new_hash)
+                
+                return ret
+            except KeyError:
+                # otherwise, we need to run the function and save the result
+                ret = fn(self, *args, **kwargs)
+                self.set_kv(new_hash, ret)
+                return ret
+        return wrapper
+    return _f
 
 
 @contextmanager
@@ -403,6 +419,7 @@ class Remote:
 
         self._home = None
         self._no_hash = True
+        self._kv_cache = None
 
     def env(self, envname, git=None, branch=None, force_rerun=False, python_version="3.9.4") -> Remote:
         """
@@ -514,13 +531,15 @@ class Remote:
         with self.no_hash():
             # TODO: make more efficient
             statefile = self.path(".pyfra_env_state.json")
-            if statefile.exists():
-                ob = statefile.jread()
-            else:
-                ob = {}
+            if self._kv_cache is None:
+                if statefile.exists():
+                    ob = statefile.jread()
+                else:
+                    ob = {}
+                self._kv_cache = ob
             pickled_value = pickle.dumps(value, 0).decode()
-            ob[key] = pickled_value
-            statefile.jwrite(ob)
+            self._kv_cache[key] = pickled_value
+            statefile.jwrite(self._kv_cache)
 
     def get_kv(self, key: str) -> Any:
         """
@@ -530,13 +549,15 @@ class Remote:
         """
         with self.no_hash():
             # TODO: make more efficient
-            statefile = self.path(".pyfra_env_state.json")
-            if statefile.exists():
-                ob = statefile.jread()
-            else:
-                ob = {}
+            if self._kv_cache is None:
+                statefile = self.path(".pyfra_env_state.json")
+                if statefile.exists():
+                    ob = statefile.jread()
+                else:
+                    ob = {}
+                self._kv_cache = ob
 
-            return pickle.loads(ob[key].encode())
+            return pickle.loads(self._kv_cache[key].encode())
 
     def update_hash(self, *args, **kwargs):
         """
@@ -628,7 +649,7 @@ class Env(Remote):
     def _hash(cls, *args, **kwargs) -> str:
         return _hash_obs([args, kwargs])
 
-    @_mutates_state
+    @_mutates_state(hash_key=_git_hash_key)
     def _init_env(self, git, branch, python_version) -> None:
         with yaspin(text="Loading", color="white") as spinner, self.no_hash():
             ip = self.ip
@@ -666,7 +687,7 @@ class Env(Remote):
             spinner.color = "green"
             spinner.ok("OK ")
 
-    @_mutates_state
+    @_mutates_state()
     def sh(self, x, quiet=False, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False, pyenv_version=sentinel, forward_keys=False):
         """
         Run a series of bash commands on this remote. This command shares the same arguments as :func:`pyfra.shell.sh`.
