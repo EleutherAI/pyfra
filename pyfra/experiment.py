@@ -39,15 +39,24 @@ class Experiment:
             env = rem.env(tmux_name)
 
             ignore = [] if not pathlib.Path(".pyfraignore").exists() else pathlib.Path(".pyfraignore").read_text().strip().splitlines()
+            env.sh(f"sudo apt install tmux -y; pip install -U git+https://github.com/EleutherAI/pyfra; pip install -r requirements.txt", ignore_errors=True)
             pyfra.shell.copy(pyfra.remote.local.path("."), env.path("."), into=False, exclude=ignore)
+            
+            with pyfra.remote.force_run():
+                env.sh(f"tmux new-session -d -s {quote(tmux_name)}")
 
-            env.sh(f"sudo apt install tmux -y; pip install -U git+https://github.com/EleutherAI/pyfra; pip install -r requirements.txt; tmux new-session -d -s {quote(tmux_name)}", ignore_errors=True)
+            # allow sshing remote into itself
+            rem_key = rem.path("~/.ssh/id_rsa.pub").read()
+            if rem_key not in rem.path("~/.ssh/authorized_keys").read():
+                rem.path("~/.ssh/authorized_keys").write(rem_key, append=True)
+
             # cmd = f"{cmd} || ( eval $(tmux show-env -s |grep '^SSH_'); {cmd} )"
             cmd = f"pyenv shell {env.pyenv_version}" if env.pyenv_version is not None else ""
             cmd += f";[ -f env/bin/activate ] && . env/bin/activate; "
             cmd += "PYFRA_DELEGATED=1 python "+" ".join([quote(x) for x in sys.argv])
-
-            env.sh(f"tmux send-keys -t {quote(tmux_name)} {quote(cmd)} Enter")
+            
+            with pyfra.remote.force_run():
+                env.sh(f"tmux send-keys -t {quote(tmux_name)} {quote(cmd)} Enter")
             
             _attach_tmux()
 
