@@ -46,7 +46,7 @@ def delegate(experiment_name, rem):
         pyfra.shell.copy(pyfra.remote.local.path("."), env.path("."), into=False, exclude=ignore)
         
         with pyfra.remote.force_run():
-            env.sh(f"tmux new-session -d -s {quote(tmux_name)}; sleep 1")
+            env.sh(f"tmux new-session -d -s {quote(tmux_name)}")
 
         # cmd = f"{cmd} || ( eval $(tmux show-env -s |grep '^SSH_'); {cmd} )"
         cmd = f"pyenv shell {env.pyenv_version}" if env.pyenv_version is not None else ""
