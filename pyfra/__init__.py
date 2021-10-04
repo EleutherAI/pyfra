@@ -4,7 +4,7 @@ init()
 from .remote import *
 from .web import *
 from .shell import *
-from .experiment import *
+from .delegation import *
 
 import pyfra.contrib as contrib
 
