@@ -413,6 +413,8 @@ class Remote:
         """
         if ip in ["127.0.0.1", "localhost"]: ip = None
 
+        if "PYFRA_DELEGATED_TO" in os.environ and ip == os.environ["PYFRA_DELEGATED_TO"]: ip = None
+
         self.ip = ip
         self.wd = _normalize_homedir(wd) if wd is not None else "~"
         self.experiment = experiment
