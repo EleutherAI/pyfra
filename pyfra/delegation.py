@@ -59,8 +59,10 @@ def delegate(experiment_name, rem, artifacts=[]):
         
         _attach_tmux()
 
-        for pattern in artifacts:
-            for path in pyfra.remote.local.path(".").glob(pattern):
-                pyfra.shell.copy(path, pyfra.remote.local.path("."), into=False, exclude=ignore)
+    if artifacts: print("Copying artifacts")
+    for pattern in artifacts:
+        for path in env.path(".").glob(pattern):
+            if path.fname.endswith(".pyfra_env_state.json"): continue
+            pyfra.shell.copy(path, pyfra.remote.local.path("."), exclude=ignore)
 
     sys.exit(0)
