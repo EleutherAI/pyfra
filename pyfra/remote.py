@@ -324,14 +324,16 @@ class RemotePath:
         """
         Stat a remote file
         """
-        return os.stat_result(self._remote_payload("stat"))
+        with self.remote.no_hash():
+            return os.stat_result(self._remote_payload("stat"))
     
     def exists(self) -> bool:
         """
         Check if this file exists
         """
         try:
-            return self._remote_payload("exists")
+            with self.remote.no_hash():
+                return self._remote_payload("exists")
         except pyfra.shell.ShellException:
             # if we can't connect to the remote, the file does not exist
             return False
@@ -340,7 +342,8 @@ class RemotePath:
         """
         Check if this file exists
         """
-        return self._remote_payload("is_dir")
+        with self.remote.no_hash():
+            return self._remote_payload("is_dir")
     
     def unlink(self) -> None:
         """
@@ -356,9 +359,10 @@ class RemotePath:
             if self.remote.is_local():
                 return pathlib.Path(self.fname).expanduser().glob(*args, **kwargs)
             else:
-                payload = f"import pathlib,json; print(json.dumps([str(f) for f in pathlib.Path({repr(self.fname)}).expanduser().glob(*{args}, **{kwargs})]))"
-                ret = self.remote.sh(f"python -c {payload | pyfra.shell.quote}", quiet=True, no_venv=True, pyenv_version=None)
-                return json.loads(ret)
+                with self.remote.no_hash():
+                    payload = f"import pathlib,json; print(json.dumps([str(f) for f in pathlib.Path({repr(self.fname)}).expanduser().glob(*{args}, **{kwargs})]))"
+                    ret = self.remote.sh(f"python -c {payload | pyfra.shell.quote}", quiet=True, no_venv=True, pyenv_version=None)
+                    return json.loads(ret)
 
         return [RemotePath(self.remote, str(f)) for f in _glob_remote_payload(pattern)]
 
@@ -382,7 +386,8 @@ class RemotePath:
         """
         Return the sha256sum of this file.
         """
-        return self.remote.sh(f"sha256sum {self.fname}", quiet=True).split(" ")[0]
+        with self.remote.no_hash():
+            return self.remote.sh(f"sha256sum {self.fname}", quiet=True).split(" ")[0]
 
     @_cache
     def quick_hash(self) -> str:
@@ -405,7 +410,9 @@ import pyfra.shell
 
 print(pyfra.shell.quick_hash(pathlib.Path(os.path.expanduser({repr(self.fname)}))))
             """.strip()
-            ret = self.remote.sh(f"[ -f ~/.pyfra_imohash ] || ( python -m pip --help > /dev/null 2>&1 || sudo apt-get install python3-pip -y > /dev/null 2>&1; python -m pip install imohash 'pyfra>=0.3.0rc5' > /dev/null 2>&1; touch ~/.pyfra_imohash ); python -c {payload | pyfra.shell.quote}", no_venv=True, pyenv_version=None, quiet=True).strip()
+
+            with self.remote.no_hash():
+                ret = self.remote.sh(f"[ -f ~/.pyfra_imohash ] || ( python -m pip --help > /dev/null 2>&1 || sudo apt-get install python3-pip -y > /dev/null 2>&1; python -m pip install imohash 'pyfra>=0.3.0rc5' > /dev/null 2>&1; touch ~/.pyfra_imohash ); python -c {payload | pyfra.shell.quote}", no_venv=True, pyenv_version=None, quiet=True).strip()
 
             assert all(x in "0123456789abcdef" for x in ret[:32])
             return ret[:32]
