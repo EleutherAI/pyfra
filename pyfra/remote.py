@@ -352,7 +352,15 @@ class RemotePath:
         """
         Find all files matching the glob pattern.
         """
-        return [RemotePath(self.remote, f) for f in self._remote_payload("glob", pattern)]
+        def _glob_remote_payload(*args, **kwargs):
+            if self.remote.is_local():
+                return pathlib.Path(self.fname).expanduser().glob(*args, **kwargs)
+            else:
+                payload = f"import pathlib,json; print(json.dumps([str(f) for f in pathlib.Path({repr(self.fname)}).expanduser().glob(*{args}, **{kwargs})]))"
+                ret = self.remote.sh(f"python -c {payload | pyfra.shell.quote}", quiet=True, no_venv=True, pyenv_version=None)
+                return json.loads(ret)
+
+        return [RemotePath(self.remote, str(f)) for f in _glob_remote_payload(pattern)]
 
     def expanduser(self) -> RemotePath:
         """
