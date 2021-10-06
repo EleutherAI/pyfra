@@ -9,9 +9,10 @@ import pyfra.shell
 __all__ = ["delegate"]
 
 
-def delegate(experiment_name, rem):
+def delegate(experiment_name, rem, artifacts=[]):
     tmux_name = f"pyfra_delegated_{experiment_name}"
     if isinstance(rem, str): rem = pyfra.remote.Remote(rem)
+    if isinstance(artifacts, str): artifacts = [artifacts]
 
     if "PYFRA_DELEGATED" in os.environ:
         return
@@ -57,5 +58,9 @@ def delegate(experiment_name, rem):
             env.sh(f"tmux send-keys -t {quote(tmux_name)} {quote(cmd)} Enter")
         
         _attach_tmux()
+
+        for pattern in artifacts:
+            for path in pyfra.remote.local.path(".").glob(pattern):
+                pyfra.shell.copy(path, pyfra.remote.local.path("."), into=False, exclude=ignore)
 
     sys.exit(0)
