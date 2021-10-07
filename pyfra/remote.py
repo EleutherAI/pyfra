@@ -669,7 +669,7 @@ class Env(Remote):
     @_mutates_state(hash_key=_git_hash_key)
     def _init_env(self, git, branch, python_version) -> None:
         with yaspin(text="Loading", color="white") as spinner, self.no_hash():
-            ip = self.ip
+            ip = self.ip if self.ip is not None else "localhost"
             wd = self.wd
 
             spinner.text = f"[{ip}:{wd}] Installing python in env" 
