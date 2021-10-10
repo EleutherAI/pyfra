@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import csv
 import hashlib
 import io
@@ -560,8 +561,11 @@ class Remote:
                 else:
                     ob = {}
                 self._kv_cache = ob
-            pickled_value = pickle.dumps(value, 0).decode()
+            pickled_value = base64.b64encode(pickle.dumps(value)).decode()
             self._kv_cache[key] = pickled_value
+
+            # for backwards compat if we ever change the encoding format
+            self._kv_cache[key + "_format"] = "b64"
             statefile.jwrite(self._kv_cache)
 
     def get_kv(self, key: str) -> Any:
@@ -580,7 +584,11 @@ class Remote:
                     ob = {}
                 self._kv_cache = ob
 
-            return pickle.loads(self._kv_cache[key].encode())
+            # check storage format for backwards compat
+            if key + "_format" not in self._kv_cache:
+                return pickle.loads(self._kv_cache[key].encode())
+            elif self._kv_cache[key + "_format"] == "b64":
+                return pickle.loads(base64.b64decode(self._kv_cache[key].encode()))
 
     def update_hash(self, *args, **kwargs):
         """
