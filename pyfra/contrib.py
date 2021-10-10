@@ -2,7 +2,7 @@ from pyfra import *
 from pathlib import Path 
 
 @force_run()
-def make_tpu_vm(rem_gcp, tpu_name, zone="europe-west4-a", type="v3-8"):
+def tpu_vm_create(rem_gcp, tpu_name, zone="europe-west4-a", type="v3-8"):
     user = rem_gcp.sh("echo $USER").strip()
 
     def _get_tpu_ssh():
@@ -29,7 +29,7 @@ def make_tpu_vm(rem_gcp, tpu_name, zone="europe-west4-a", type="v3-8"):
 
     return _get_tpu_ssh()
 
-def kubesh(pod, cmd, executable="bash"):
+def kube_sh(pod, cmd, executable="bash"):
     """
     Run a command in a kube pod
     """
@@ -44,15 +44,15 @@ def kubesh(pod, cmd, executable="bash"):
     return local.sh(cmd)
 
 
-def copy_ssh_key(pod: str, key_path: str = None):
+def kube_copy_ssh_key(pod: str, key_path: str = None):
     """
     Copy an ssh key to the k8 pod
     """
     if key_path is None:
         for pubkey in (Path(local.home()) / ".ssh").glob("*.pub"):
-            copy_ssh_key(pod, pubkey)
+            kube_copy_ssh_key(pod, pubkey)
         return
-    kubesh(
+    kube_sh(
         pod,
         f"echo {quote(local.path(key_path).read().strip())} >> ~/.ssh/authorized_keys",
     )
@@ -80,6 +80,6 @@ def kube_remote(
         pass
 
     # copy ssh key
-    copy_ssh_key(pod, ssh_key_path)
+    kube_copy_ssh_key(pod, ssh_key_path)
 
     return Remote(ip)
