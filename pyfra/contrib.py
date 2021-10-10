@@ -1,4 +1,5 @@
 from pyfra import *
+from pathlib import Path 
 
 @force_run()
 def make_tpu_vm(rem_gcp, tpu_name, zone="europe-west4-a", type="v3-8"):
@@ -27,3 +28,58 @@ def make_tpu_vm(rem_gcp, tpu_name, zone="europe-west4-a", type="v3-8"):
     time.sleep(10)
 
     return _get_tpu_ssh()
+
+def kubesh(pod, cmd, executable="bash"):
+    """
+    Run a command in a kube pod
+    """
+    if executable == "bash":
+        cmd = f"kubectl exec -it {pod} -- /bin/bash -c {quote(cmd)}"
+    elif executable == "sh":
+        cmd = f"kubectl exec -it {pod} -- /bin/sh -c {quote(cmd)}"
+    elif executable == None:
+        cmd = f"kubectl exec -it {pod} -- {quote(cmd)}"
+    else:
+        raise ValueError(f"executable must be bash or None, not {executable}")
+    return local.sh(cmd)
+
+
+def copy_ssh_key(pod: str, key_path: str = None):
+    """
+    Copy an ssh key to the k8 pod
+    """
+    if key_path is None:
+        for pubkey in (Path(local.home()) / ".ssh").glob("*.pub"):
+            copy_ssh_key(pod, pubkey)
+        return
+    kubesh(
+        pod,
+        f"echo {quote(local.path(key_path).read().strip())} >> ~/.ssh/authorized_keys",
+    )
+
+
+def kube_remote(
+    pod: str, ssh_key_path: str = None, user=None, service_name=None
+) -> Remote:
+    """
+    Get a remote object for a k8 pod
+    """
+    if service_name is None:
+        service_name = pod.split("-")[0] + "-service"
+    get_ip_cmd = f"kubectl get service/{service_name} -o jsonpath='{{.status.loadBalancer.ingress[0].ip}}'"
+    ip = local.sh(get_ip_cmd).strip()
+    if user is not None:
+        ip = f"{user}@{ip}"
+
+    # try to connect
+    try:
+        r = Remote(ip)
+        r.sh(f"echo hello from {pod}")
+        return r
+    except ShellException:
+        pass
+
+    # copy ssh key
+    copy_ssh_key(pod, ssh_key_path)
+
+    return Remote(ip)
