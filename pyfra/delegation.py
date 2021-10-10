@@ -14,7 +14,7 @@ def delegate(experiment_name, rem, artifacts=[]):
     if isinstance(rem, str): rem = pyfra.remote.Remote(rem)
     if isinstance(artifacts, str): artifacts = [artifacts]
 
-    if "PYFRA_DELEGATED" in os.environ:
+    if is_delegated():
         return
     def _attach_tmux():
         rem.sh(f"tmux a -t {quote(tmux_name)}", maxbuflen=0, forward_keys=True)
@@ -66,3 +66,7 @@ def delegate(experiment_name, rem, artifacts=[]):
             pyfra.shell.copy(path, pyfra.remote.local.path("."), exclude=ignore)
 
     sys.exit(0)
+
+
+def is_delegated():
+    return "PYFRA_DELEGATED" in os.environ
