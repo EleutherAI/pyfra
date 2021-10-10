@@ -515,6 +515,12 @@ class Remote:
         
         return self._home
 
+    def glob(self, pattern: str) -> List[RemotePath]:
+        """
+        Find all files matching the glob pattern.
+        """
+        return self.path(".").glob(pattern)
+
     def fwrite(self, fname, content, append=False) -> None:
         """
         :meta private:
