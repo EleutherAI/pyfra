@@ -379,6 +379,9 @@ class RemotePath:
             # todo: be more careful with this replace
             return RemotePath(self.remote, os.path.expanduser(self.fname).replace("~", homedir))
     
+    def sh(self, cmd, *args, **kwargs):
+        return self.remote.sh(f"cd {quote(self.expanduser().fname)}; "+cmd, *args, **kwargs)
+    
     def __div__(self, other):
         return RemotePath(self.remote, os.path.join(self.fname, other))
 
