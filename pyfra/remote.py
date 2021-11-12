@@ -115,10 +115,13 @@ def _mutates_state(hash_key=None):
                 
                 return ret
             except KeyError:
-                # otherwise, we need to run the function and save the result
-                ret = fn(self, *args, **kwargs)
-                self.set_kv(new_hash, ret)
-                return ret
+                try:
+                    # otherwise, we need to run the function and save the result
+                    ret = fn(self, *args, **kwargs)
+                    self.set_kv(new_hash, ret)
+                    return ret
+                except Exception as e: # this prevents the KeyError ending up in the stacktrace
+                    raise e from None
         return wrapper
     return _f
 
@@ -380,7 +383,10 @@ class RemotePath:
             return RemotePath(self.remote, os.path.expanduser(self.fname).replace("~", homedir))
     
     def sh(self, cmd, *args, **kwargs):
-        return self.remote.sh(f"cd {quote(self.expanduser().fname)}; "+cmd, *args, **kwargs)
+        try:
+            return self.remote.sh(f"cd {quote(self.expanduser().fname)}; "+cmd, *args, **kwargs)
+        except pyfra.shell.ShellException as e:  # this makes the stacktrace easier to read
+            raise pyfra.shell.ShellException(e.returncode, rem=not self.remote.is_local()) from e.__cause__
     
     def __div__(self, other):
         return RemotePath(self.remote, os.path.join(self.fname, other))
@@ -453,11 +459,14 @@ class Remote:
         """
         Run a series of bash commands on this remote. This command shares the same arguments as :func:`pyfra.shell.sh`.
         """
-        if self.ip is None:
-            return pyfra.shell.sh(x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=pyenv_version)
-        else:
-            return pyfra.shell._rsh(self.ip, x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=pyenv_version, forward_keys=forward_keys)
-
+        try:
+            if self.ip is None:
+                return pyfra.shell.sh(x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=pyenv_version)
+            else:
+                return pyfra.shell._rsh(self.ip, x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=pyenv_version, forward_keys=forward_keys)
+        except pyfra.shell.ShellException as e:  # this makes the stacktrace easier to read
+            raise pyfra.shell.ShellException(e.returncode, rem=not self.is_local()) from e.__cause__
+    
     def path(self, fname=None) -> RemotePath:
         """
         This is the main way to make a :class:`RemotePath` object; see RemotePath docs for more info on what they're used for.
@@ -727,9 +736,12 @@ class Env(Remote):
         Run a series of bash commands on this remote. This command shares the same arguments as :func:`pyfra.shell.sh`.
         :meta private:
         """
-    
-        return super().sh(x, quiet=quiet, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=pyenv_version if pyenv_version is not sentinel else self.pyenv_version, forward_keys=forward_keys)
 
+        try:
+            return super().sh(x, quiet=quiet, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=pyenv_version if pyenv_version is not sentinel else self.pyenv_version, forward_keys=forward_keys)
+        except pyfra.shell.ShellException as e:  # this makes the stacktrace easier to read
+            raise pyfra.shell.ShellException(e.returncode, rem=not self.is_local()) from e.__cause__
+    
     def _install(self, python_version) -> None:   
         # set up remote python version
         if python_version is not None: install_pyenv(self, python_version)

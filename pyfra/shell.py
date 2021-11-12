@@ -16,8 +16,11 @@ from natsort import natsorted
 import imohash
 import pyfra.remote
 
-
-class ShellException(Exception): pass
+class ShellException(Exception):
+    def __init__(self, code, rem=False):
+        super().__init__(f"Command exited with non-zero error code {code}" + 
+            (". This could either be because the ssh connection could not be made, or because the command itself failed." if rem and code == 255 else ""))
+        self.returncode = code
 
 
 __all__ = ['sh', 'copy', 'ls', 'curl', 'quote', 'ShellException']
@@ -121,7 +124,10 @@ def sh(cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, ignore_errors
     """
     if wd is None: wd = os.getcwd()
 
-    return _rsh("127.0.0.1", cmd, quiet, wd, wrap, maxbuflen, -1, ignore_errors, no_venv, pyenv_version)
+    try:
+        return _rsh("127.0.0.1", cmd, quiet, wd, wrap, maxbuflen, -1, ignore_errors, no_venv, pyenv_version)
+    except ShellException as e: # this makes the stacktrace easier to read
+        raise ShellException(e.returncode) from None
 
 
 def _rsh(host, cmd, quiet=False, wd=None, wrap=True, maxbuflen=1000000000, connection_timeout=10, ignore_errors=False, no_venv=False, pyenv_version=None, forward_keys=False):
