@@ -29,7 +29,7 @@ def tpu_vm_create(rem_gcp, tpu_name, zone="europe-west4-a", type="v3-8"):
 
     return _get_tpu_ssh()
 
-def kube_sh(pod, cmd, executable="bash"):
+def kube_sh(pod, cmd, executable="bash", quiet=False):
     """
     Run a command in a kube pod
     """
@@ -41,10 +41,10 @@ def kube_sh(pod, cmd, executable="bash"):
         cmd = f"kubectl exec -it {pod} -- {quote(cmd)}"
     else:
         raise ValueError(f"executable must be bash or None, not {executable}")
-    return local.sh(cmd)
+    return local.sh(cmd, quiet)
 
 
-def kube_copy_ssh_key(pod: str, key_path: str = None):
+def kube_copy_ssh_key(pod: str, key_path: str = None, quiet: bool = False):
     """
     Copy an ssh key to the k8 pod
     """
@@ -55,11 +55,12 @@ def kube_copy_ssh_key(pod: str, key_path: str = None):
     kube_sh(
         pod,
         f"echo {quote(local.path(key_path).read().strip())} >> ~/.ssh/authorized_keys",
+        quiet=quiet,
     )
 
 
 def kube_remote(
-    pod: str, ssh_key_path: str = None, user=None, service_name=None
+    pod: str, ssh_key_path: str = None, user=None, service_name=None, quiet=False
 ) -> Remote:
     """
     Get a remote object for a k8 pod
@@ -67,19 +68,19 @@ def kube_remote(
     if service_name is None:
         service_name = pod.split("-")[0] + "-service"
     get_ip_cmd = f"kubectl get service/{service_name} -o jsonpath='{{.status.loadBalancer.ingress[0].ip}}'"
-    ip = local.sh(get_ip_cmd).strip()
+    ip = local.sh(get_ip_cmd, quiet=quiet).strip()
     if user is not None:
         ip = f"{user}@{ip}"
 
     # try to connect
     try:
         r = Remote(ip)
-        r.sh(f"echo hello from {pod}")
+        r.sh(f"echo hello from {pod}", quiet=quiet)
         return r
     except ShellException:
         pass
 
     # copy ssh key
-    kube_copy_ssh_key(pod, ssh_key_path)
+    kube_copy_ssh_key(pod, ssh_key_path, quiet=quiet)
 
     return Remote(ip)
