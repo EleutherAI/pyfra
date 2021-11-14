@@ -743,6 +743,9 @@ class Env(Remote):
             raise pyfra.shell.ShellException(e.returncode, rem=not self.is_local()) from e.__cause__
     
     def _install(self, python_version) -> None:   
+        # install sudo if it's not installed; this is the case in some docker containers
+        self.sh("sudo echo hi || { apt-get update; apt-get install sudo; }", pyenv_version=None, ignore_errors=True, quiet=True)
+
         # set up remote python version
         if python_version is not None: install_pyenv(self, python_version)
 
