@@ -9,8 +9,7 @@ __all__ = [
 ]
 
 def apt(r, packages):
-    # install sudo if it's not installed; this is the case in some docker containers
-    r.sh(f"sudo echo hi || {{ apt-get update; apt-get install sudo; }}; sudo apt-get update; sudo apt-get install -y {' '.join(packages)}", pyenv_version=None)
+    r.sh(f"sudo echo hi || sudo apt-get update; sudo apt-get install -y {' '.join(packages)}", pyenv_version=None)
 
 
 def ensure_supported(r):
