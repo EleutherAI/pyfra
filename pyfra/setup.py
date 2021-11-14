@@ -9,7 +9,7 @@ __all__ = [
 ]
 
 def apt(r, packages):
-    r.sh(f"sudo echo hi || sudo apt-get update; sudo apt-get install -y {' '.join(packages)}", pyenv_version=None)
+    r.sh(f"sudo apt-get update; sudo apt-get install -y {' '.join(packages)}", pyenv_version=None)
 
 
 def ensure_supported(r):
