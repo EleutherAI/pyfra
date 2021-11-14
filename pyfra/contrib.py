@@ -41,7 +41,7 @@ def kube_sh(pod, cmd, executable="bash", quiet=False):
         cmd = f"kubectl exec -it {pod} -- {quote(cmd)}"
     else:
         raise ValueError(f"executable must be bash or None, not {executable}")
-    return local.sh(cmd, quiet)
+    return local.sh(cmd, quiet=quiet)
 
 
 def kube_copy_ssh_key(pod: str, key_path: str = None, quiet: bool = False):
