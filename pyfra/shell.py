@@ -236,7 +236,7 @@ def copy(frm, to, quiet=False, connection_timeout=10, symlink_ok=True, into=True
     if quiet:
         opts = "-e \"ssh -o StrictHostKeyChecking=no\" -arqL"
     else:
-        opts = "-e \"ssh -o StrictHostKeyChecking=no\" -arL --info=progress2"
+        opts = "-e \"ssh -o StrictHostKeyChecking=no\" -arL"
     
     for ex in exclude:
         opts += f" --exclude {ex | pyfra.shell.quote}"
