@@ -384,7 +384,7 @@ class RemotePath:
     
     def sh(self, cmd, *args, **kwargs):
         try:
-            return self.remote.sh(f"cd {quote(self.expanduser().fname)}; "+cmd, *args, **kwargs)
+            return self.remote.sh(f"cd {pyfra.shell.quote(self.expanduser().fname)}; "+cmd, *args, **kwargs)
         except pyfra.shell.ShellException as e:  # this makes the stacktrace easier to read
             raise pyfra.shell.ShellException(e.returncode, rem=not self.remote.is_local()) from e.__cause__
     
