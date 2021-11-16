@@ -902,8 +902,9 @@ def stage(fn):
                 if env.hash != orighash:
                     print(f"WARNING: expected env {ip}:{envname} to have hash {orighash} but got {env.hash}! Did the ip change?")
                 env.hash = newhash
-                
-            print(f"Skipping stage {Style.BRIGHT}{fn.__name__}{Style.RESET_ALL}")
+            
+            fmt_args = ", ".join(list(map(str, args)) + [f"{k}={v}" for k, v in kwargs.items()])
+            print(f"Skipping stage {Style.BRIGHT}{fn.__name__}{Style.RESET_ALL}({fmt_args})")
         except KeyError:
             ret = fn(*args, **kwargs)
 
