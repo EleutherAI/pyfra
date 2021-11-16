@@ -11,6 +11,10 @@ Research code has some of the fastest shifting requirements of any type of code.
 
 Therefore, the objective of pyfra is to make it as fast and *low-friction* as possible to write research code involving complex pipelines over many machines. This entails making it as easy as possible to implement a research idea in reality, at the cost of fine-grained control and the long-term maintainability of the system. In other words, pyfra expects that code will either be rapidly obsoleted by newer code, or rewritten using some other framework once it is no longer a research project and requirements have settled down.
 
+As such, high quality interface design is a top priority of pyfra. The ultimate goal is to make interfaces that feel extremely natural, such that it is intuitively obvious what any piece of pyfra code should do, without requiring consultation of the docs. The core pyfra abstractions should be optimized, as much as possible, for _naturalness_; it should be easy to do the things that are frequently needed, but if making it so would require a sacrifice in generality, the abstraction should be decomposed into a maximally-general core and an application-specific layer on top. As is it expected that pyfra-based code is short lived, when trading off between API stability and cleaner/more intuitive interfaces, pyfra will attempt to choose the latter. That being said, core pyfra should become more and more stable as time progressese.
+
+The `pyfra.contrib` package is intended for code that is built on top of pyfra and useful in conjunction with pyfra, but has fewer stability guarantees than core pyfra. Especially useful and well designed functions in contrib may be promoted to core pyfra.
+
 **Pyfra is in its very early stages of development. The interface may change rapidly and without warning.**
 
 Features:
