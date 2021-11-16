@@ -29,7 +29,7 @@ __all__ = [
     "RemotePath",
     "Env",
     "stage",
-    "force_run",
+    "always_rerun",
     "local",
 ]
 
@@ -903,7 +903,7 @@ def stage(fn):
                     print(f"WARNING: expected env {ip}:{envname} to have hash {orighash} but got {env.hash}! Did the ip change?")
                 env.hash = newhash
                 
-            print(f"Skipping block {fn.__name__}")
+            print(f"Skipping stage {Style.BRIGHT}{fn.__name__}{Style.RESET_ALL}")
         except KeyError:
             ret = fn(*args, **kwargs)
 

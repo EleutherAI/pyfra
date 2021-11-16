@@ -1,7 +1,7 @@
 from pyfra import *
 from pathlib import Path 
 
-@force_run()
+@always_rerun()
 def tpu_vm_create(rem_gcp, tpu_name, zone="europe-west4-a", type="v3-8"):
     user = rem_gcp.sh("echo $USER").strip()
 
