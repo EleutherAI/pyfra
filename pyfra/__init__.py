@@ -2,7 +2,6 @@ from colorama import init
 init()
 
 from .remote import *
-from .web import *
 from .shell import *
 from .delegation import *
 

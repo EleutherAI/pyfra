@@ -23,5 +23,5 @@ login.login_view = 'login'
 app.config['FLASK_ADMIN_SWATCH'] = 'cerulean'
 admin = Admin(app, name='Admin Dashboard', template_mode='bootstrap3')
 
-import pyfra.web.models
+import pyfra.contrib.web.models
 

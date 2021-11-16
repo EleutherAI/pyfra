@@ -1,5 +1,6 @@
 from pyfra import *
 from pathlib import Path 
+import pyfra.contrib.web as web
 
 @always_rerun()
 def tpu_vm_create(rem_gcp, tpu_name, zone="europe-west4-a", type="v3-8"):
