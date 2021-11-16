@@ -107,7 +107,7 @@ def _mutates_state(hash_key=None):
             new_hash = self.update_hash(fn.__name__, *args, **kwargs) if hash_key is None else self.update_hash(*hash_key(fn, self, *args, **kwargs))
             try:
                 # if globally we want to ignore hashes, we force a keyerror to run the function again
-                if global_env_registry.no_hash: raise KeyError
+                if global_env_registry.always_rerun: raise KeyError
 
                 # if hash is in the state, then we can just return that
                 ret = self.get_kv(new_hash)
@@ -127,19 +127,19 @@ def _mutates_state(hash_key=None):
 
 
 @contextmanager
-def force_run():
+def always_rerun():
     """
     Use as a context manager to force all Envs to ignore cached results.
-    Doesn't affect @stages, which will continue to cache
+    Also forces stages to run.
     """
-    if global_env_registry.no_hash:
+    if global_env_registry.always_rerun:
         yield
     else:
-        global_env_registry.no_hash = True
+        global_env_registry.always_rerun = True
         try:
             yield
         finally:
-            global_env_registry.no_hash = False
+            global_env_registry.always_rerun = False
 
 # remote stuff
 
@@ -889,6 +889,9 @@ def stage(fn):
             #     same as last case, except it's slightly easier to detect since we 
             #     can parse the output
 
+            # if globally we want to always rerun, we force a keyerror to run the function again
+            if global_env_registry.always_rerun: raise KeyError
+
             # set hashes for envs
             changed_hashes, ret = local.get_kv(overall_input_hash)
 
@@ -920,7 +923,7 @@ class _EnvRegistry:
     # everything here is O(n) but there shouldn't be a lot of envs so it's fine
     def __init__(self):
         self.envs = []
-        self.no_hash = False
+        self.always_rerun = False
     
     def hashes_by_env(self):
         return {
@@ -938,3 +941,5 @@ class _EnvRegistry:
 
 local = Remote(wd=os.getcwd())
 global_env_registry = _EnvRegistry()
+
+if "PYFRA_ALWAYS_RERUN" in os.environ: global_env_registry = True
