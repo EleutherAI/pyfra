@@ -947,6 +947,7 @@ def stage(fn):
                 return _wrapper(ret)
             else:
                 _write_hashes(ret)
+                return ret
         
         ## ASYNC HANDLING, resume from file
         if asynchronous:
