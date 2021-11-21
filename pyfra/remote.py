@@ -434,12 +434,13 @@ print(pyfra.shell.quick_hash(pathlib.Path(os.path.expanduser({repr(self.fname)})
             
 
 class Remote:
-    def __init__(self, ip=None, wd=None, experiment=None):
+    def __init__(self, ip=None, wd=None, experiment=None, resumable=False):
         """
         Args:
             ip (str): The host to ssh to. This looks something like :code:`12.34.56.78` or :code:`goose.com` or :code:`someuser@12.34.56.78` or :code:`someuser@goose.com`. You must enable passwordless ssh and have your ssh key added to the server first. If None, the Remote represents localhost.
             wd (str): The working directory on the server to start out on.
             python_version (str): The version of python to use (i.e running :code:`Remote("goose.com", python_version="3.8.10").sh("python --version")` will use python 3.8.10). If this version is not already installed, pyfra will install it.
+            resumable (bool): If True, this Remote will resume where it left off, with the same semantics as Env.
         """
         if ip in ["127.0.0.1", "localhost"]: ip = None
 
@@ -448,9 +449,10 @@ class Remote:
         self.ip = ip
         self.wd = _normalize_homedir(wd) if wd is not None else "~"
         self.experiment = experiment
+        self.resumable = resumable
 
         self._home = None
-        self._no_hash = True
+        self._no_hash = not resumable
         self._kv_cache = None
 
     def env(self, envname, git=None, branch=None, force_rerun=False, python_version="3.9.4") -> Remote:
@@ -460,6 +462,7 @@ class Remote:
 
         return Env(ip=self.ip, envname=envname, git=git, branch=branch, force_rerun=force_rerun, python_version=python_version)
 
+    @_mutates_state()
     def sh(self, x, quiet=False, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False, pyenv_version=None, forward_keys=False):
         """
         Run a series of bash commands on this remote. This command shares the same arguments as :func:`pyfra.shell.sh`.
@@ -539,7 +542,7 @@ class Remote:
         """
         return self.path(".").glob(pattern)
 
-    def fwrite(self, fname, content, append=False) -> None:
+    def _fwrite(self, fname, content, append=False) -> None:
         """
         :meta private:
         """
@@ -556,6 +559,31 @@ class Remote:
             else:
                 pyfra.shell.copy(f".tmp.{nonce}", self.path(fname), quiet=True)
             pyfra.shell.rm(f".tmp.{nonce}")
+
+    def fwrite(self, fname, content, append=False) -> None:
+        """
+        :meta private:
+        """
+        # wraps fwrite to make it keep track of state hashes
+        # TODO: replace with paramiko
+        # TODO: extract this statehash code and the one in shell.copy to a common function or something
+        needs_set_kv = False
+        if not self._no_hash:
+            assert fname.startswith(self.wd)
+            fname_suffix = fname[len(self.wd):]
+            new_hash = self.update_hash("fwrite", fname_suffix, content, append)
+            try:
+                self.get_kv(new_hash)
+                _print_skip_msg(self.envname, "fwrite", new_hash)
+                return
+            except KeyError:
+                needs_set_kv = True
+        
+        with self.no_hash():
+            self._fwrite(fname, content, append)
+
+        if needs_set_kv:
+            self.set_kv(new_hash, None)
 
     # key-value store for convienence
 
@@ -607,11 +635,12 @@ class Remote:
             elif self._kv_cache[key + "_format"] == "b64":
                 return pickle.loads(base64.b64decode(self._kv_cache[key].encode()))
 
-    def update_hash(self, *args, **kwargs):
+    def update_hash(self, *args, **kwargs) -> str:
         """
         :meta private:
         """
-        pass
+        self.hash = self._hash(self.hash, *args, **kwargs)
+        return self.hash
     
     @contextmanager
     def no_hash(self):
@@ -644,6 +673,10 @@ class Remote:
         # but rather is supposed to represent the particular location this 
         # Remote/Env is pointing to.
         return hash((self.ip, self.wd))
+    
+    @classmethod
+    def _hash(cls, *args, **kwargs) -> str:
+        return _hash_obs([args, kwargs])
 
 # env
 class Env(Remote):
@@ -673,12 +706,12 @@ class Env(Remote):
         ip (str): The host to ssh to. This looks something like :code:`12.34.56.78` or :code:`goose.com` or :code:`someuser@12.34.56.78` or :code:`someuser@goose.com`. You must enable passwordless ssh and have your ssh key added to the server first. If None, the Remote represents localhost.
         git (str): The git repo to clone into the fresh env. If None, no git repo is cloned.
         branch (str): The git branch to clone. If None, the default branch is used.
-        force_rerun (bool): If True, all hashing will be disabled and everything will be run every time.
+        force_rerun (bool): If True, all hashing will be disabled and everything will be run every time. Deprecated in favor of `with pyfra.always_rerun()`
         python_version (str): The python version to use.
     """
     def __init__(self, ip=None, envname=None, git=None, branch=None, force_rerun=False, python_version="3.9.4"):
         self.wd = f"~/pyfra_envs/{envname}"
-        super().__init__(ip, self.wd)
+        super().__init__(ip, self.wd, resumable=True)
         self.pyenv_version = python_version
 
         self.envname = envname
@@ -686,16 +719,12 @@ class Env(Remote):
         self.hash = self._hash(None)
         self._no_hash = False
 
-        if force_rerun:
+        if force_rerun: # deprecated
             self.path(".pyfra_env_state.json").unlink()
 
         self._init_env(git, branch, python_version)
 
         global_env_registry.register(self)
-    
-    @classmethod
-    def _hash(cls, *args, **kwargs) -> str:
-        return _hash_obs([args, kwargs])
 
     @_mutates_state(hash_key=_git_hash_key)
     def _init_env(self, git, branch, python_version) -> None:
@@ -763,38 +792,6 @@ class Env(Remote):
             'wd': self.wd,
             'pyenv_version': self.pyenv_version,
         }
-
-    def fwrite(self, fname, content, append=False) -> None:
-        """
-        :meta private:
-        """
-        # wraps fwrite to make it keep track of state hashes
-        # TODO: replace with paramiko
-        # TODO: extract this statehash code and the one in shell.copy to a common function or something
-        needs_set_kv = False
-        if not self._no_hash:
-            assert fname.startswith(self.wd)
-            fname_suffix = fname[len(self.wd):]
-            new_hash = self.update_hash("fwrite", fname_suffix, content, append)
-            try:
-                self.get_kv(new_hash)
-                _print_skip_msg(self.envname, "fwrite", new_hash)
-                return
-            except KeyError:
-                needs_set_kv = True
-        
-        with self.no_hash():
-            super().fwrite(fname, content, append)
-
-        if needs_set_kv:
-            self.set_kv(new_hash, None)
-
-    def update_hash(self, *args, **kwargs) -> str:
-        """
-        :meta private:
-        """
-        self.hash = self._hash(self.hash, *args, **kwargs)
-        return self.hash
 
 
 def stage(fn):
