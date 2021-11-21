@@ -10,6 +10,8 @@ import pathlib
 import pickle
 import random
 import uuid
+import inspect
+import asyncio
 from contextlib import contextmanager
 from functools import wraps
 from typing import *
@@ -66,6 +68,9 @@ class _ObjectEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, pyfra.remote.RemotePath):
             return obj.sha256sum()
+        if isinstance(obj, (asyncio.Lock, asyncio.Event, asyncio.Condition, asyncio.Semaphore, asyncio.BoundedSemaphore)):
+            # don't do anything with asyncio objects
+            return None
         if hasattr(obj, "_to_json"):
             return obj._to_json()
         
@@ -893,7 +898,15 @@ def stage(fn):
             if global_env_registry.always_rerun: raise KeyError
 
             # set hashes for envs
-            changed_hashes, ret = local.get_kv(overall_input_hash)
+            r = local.get_kv(overall_input_hash)
+            # backwards compatibility
+            if len(r) == 3:
+                changed_hashes, ret, asynchronous = r
+            elif len(r) == 2:
+                changed_hashes, ret = r
+                asynchronous = False
+            else:
+                raise Exception(f"Unknown number of stage kv values: {len(r)}")
 
             envs_by_ip_envname = global_env_registry.envs_by_ip_envname()
 
@@ -904,19 +917,48 @@ def stage(fn):
                 env.hash = newhash
             
             fmt_args = ", ".join(list(map(str, args)) + [f"{k}={v}" for k, v in kwargs.items()])
+            if len(fmt_args) > 100:
+                fmt_args = fmt_args[:100] + "..."
             print(f"Skipping stage {Style.BRIGHT}{fn.__name__}{Style.RESET_ALL}({fmt_args})")
         except KeyError:
             ret = fn(*args, **kwargs)
 
-            global_hashes_after = global_env_registry.hashes_by_env()
+            def _write_hashes(ret, asynchronous):
+                # check which env hashes changed, and write that tto local kv store along with ret
 
-            # get the hashes that changed
-            changed_hashes = [
-                (k.ip, k.envname, global_hashes_before[k], global_hashes_after[k]) for k in global_hashes_after if global_hashes_before[k] != global_hashes_after[k]
-            ]
+                global_hashes_after = global_env_registry.hashes_by_env()
 
-            local.set_kv(overall_input_hash, (changed_hashes, ret))
-        return ret
+                # get the hashes that changed
+                changed_hashes = [
+                    (k.ip, k.envname, global_hashes_before[k], global_hashes_after[k]) for k in global_hashes_after if global_hashes_before[k] != global_hashes_after[k]
+                ]
+
+                local.set_kv(overall_input_hash, (changed_hashes, ret, asynchronous))
+
+            ## ASYNC HANDLING, first run
+            if inspect.isawaitable(ret):
+                # WARNING: using the same env across multiple async stages is not supported, and not possible to support!
+                # TODO: detect if two async stages are using the same env and throw an error if so
+
+                async def _wrapper(ret):
+                    # turn the original async function into a synchronous one and return a new async function
+                    ret = await ret
+                    _write_hashes(ret, asynchronous=True)
+                    return ret
+                
+                return _wrapper(ret)
+            else:
+                _write_hashes(ret)
+        
+        ## ASYNC HANDLING, resume from file
+        if asynchronous:
+            async def _wrapper(ret):
+                # wrap ret in a dummy async function
+                return ret
+            
+            return _wrapper(ret)
+        else:
+            return ret
     return wrapper
 
 
