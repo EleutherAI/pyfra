@@ -455,6 +455,12 @@ class Remote:
         self._no_hash = not resumable
         self._kv_cache = None
 
+        self.hash = self._hash(None)
+        self.envname = ""
+        
+        if resumable:
+            global_env_registry.register(self)
+
     def env(self, envname, git=None, branch=None, force_rerun=False, python_version="3.9.4") -> Remote:
         """
         Arguments are the same as the :class:`pyfra.experiment.Experiment` constructor.
@@ -716,15 +722,10 @@ class Env(Remote):
 
         self.envname = envname
 
-        self.hash = self._hash(None)
-        self._no_hash = False
-
         if force_rerun: # deprecated
             self.path(".pyfra_env_state.json").unlink()
 
         self._init_env(git, branch, python_version)
-
-        global_env_registry.register(self)
 
     @_mutates_state(hash_key=_git_hash_key)
     def _init_env(self, git, branch, python_version) -> None:
