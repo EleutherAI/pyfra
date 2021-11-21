@@ -921,7 +921,7 @@ def stage(fn):
         except KeyError:
             ret = fn(*args, **kwargs)
 
-            def _write_hashes(ret, asynchronous):
+            def _write_hashes(ret, asynchronous=False):
                 # check which env hashes changed, and write that tto local kv store along with ret
 
                 global_hashes_after = global_env_registry.hashes_by_env()
