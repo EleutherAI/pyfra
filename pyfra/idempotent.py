@@ -78,7 +78,7 @@ def _prepare_for_hash(x):
     return x
 
 
-def update_source_cache(fname, lineno, new_name):
+def update_source_cache(fname, lineno, new_key):
     with open(fname, "r") as f:
         file_lines = f.read().split("\n")
 
@@ -87,24 +87,24 @@ def update_source_cache(fname, lineno, new_name):
 
     assert file_lines[lineno] in ["@cache", "@cache()"], "@cache can only be used as a decorator!"
 
-    file_lines[lineno] = f"@cache('{new_name}')"
+    file_lines[lineno] = f"@cache('{new_key}')"
 
     with open(fname, "w") as f:
         f.write("\n".join(file_lines))
 
 
-def cache(name=None):
-    def wrapper(fn, name):
-        if name is None:
-            name = pyfra.remote._hash_obs(fn.__module__, fn.__name__, inspect.getsource(fn))[:16] + "_v0"
-            # the decorator part of the stack is always the same size because we only get here if name is None
+def cache(key=None):
+    def wrapper(fn, key):
+        if key is None:
+            key = pyfra.remote._hash_obs(fn.__module__, fn.__name__, inspect.getsource(fn))[:16] + "_v0"
+            # the decorator part of the stack is always the same size because we only get here if key is None
             stack_original_function = inspect.stack()[2]
-            update_source_cache(stack_original_function.filename, stack_original_function.lineno - 1, name)
+            update_source_cache(stack_original_function.filename, stack_original_function.lineno - 1, key)
 
         @wraps(fn)
         def _fn(*args, **kwargs):
             overall_input_hash = pyfra.remote._hash_obs(
-                name,
+                key,
                 [_prepare_for_hash(i) for i in range(len(args))],
                 [_prepare_for_hash(k) for k in sorted(kwargs.keys())],
             )
@@ -133,7 +133,9 @@ def cache(name=None):
                     # without actually running the function, so we just assume it's an awaitable,
                     # since probably nothing changed.
                     return_awaitable = True # normal_returning_awaitable -> normal/normal_returning_awaitable
-
+                else:
+                    return_awaitable = False # fallback - most likely this is a bug
+                    print(f"WARNING: unknown change in async situation for {fn._name__}")
 
                 if return_awaitable:
                     async def _wrapper(ret):
@@ -171,10 +173,10 @@ def cache(name=None):
                     return ret
         return _fn
 
-    if callable(name):
-        return wrapper(name, None)
+    if callable(key):
+        return wrapper(key, None)
 
-    return partial(wrapper, name=name)
+    return partial(wrapper, key=key)
 
 
 # TODO: make it so Envs and cached Remotes cannot be used in both global and cached fn
