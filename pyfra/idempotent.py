@@ -53,7 +53,7 @@ class BlobfileKVStore(KVStoreProvider):
             raise KeyError(key)
     
     def set(self, key: str, value):
-        with bf.BlobFile(self.prefix + "/" + key) as f:
+        with bf.BlobFile(self.prefix + "/" + key, "w") as f:
             pickle.dump(value, f)
 
 
@@ -103,8 +103,7 @@ def cache(key=None):
 
         @wraps(fn)
         def _fn(*args, **kwargs):
-            overall_input_hash = pyfra.remote._hash_obs(
-                key,
+            overall_input_hash = key + "_" + pyfra.remote._hash_obs(
                 [_prepare_for_hash(i) for i in range(len(args))],
                 [_prepare_for_hash(k) for k in sorted(kwargs.keys())],
             )
@@ -180,4 +179,4 @@ def cache(key=None):
 
 
 # TODO: make it so Envs and cached Remotes cannot be used in both global and cached fn
-# TODO: add registry system for special object hashing
+# TODO: make sure Envs/Remotes serialize and deserialize properly
