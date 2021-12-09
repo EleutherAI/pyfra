@@ -49,7 +49,7 @@ class BlobfileKVStore(KVStoreProvider):
     def get(self, key: str):
         try:
             return pickle.load(bf.BlobFile(self.prefix + "/" + key, "rb"))
-        except FileNotFoundError:
+        except (FileNotFoundError, EOFError):
             raise KeyError(key)
     
     def set(self, key: str, value):
