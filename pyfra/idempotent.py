@@ -2,7 +2,12 @@ from functools import partial, wraps
 import pyfra.remote
 import abc
 import os
-import blobfile as bf
+
+try:
+    import blobfile as bf
+except ImportError:
+    pass
+
 import pickle
 import inspect
 
