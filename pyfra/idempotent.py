@@ -1,4 +1,5 @@
 from functools import partial, wraps
+from typing import Any, Callable, Dict, Type
 import pyfra.remote
 import abc
 import os
@@ -57,6 +58,11 @@ class BlobfileKVStore(KVStoreProvider):
 
 
 kvstore = LocalKVStore()
+special_hashing: Dict[Type, Callable[[Any], str]] = {}
+
+# some pyfra special hashing stuff
+special_hashing[pyfra.remote.RemotePath] = lambda x: x.quick_hash()
+special_hashing[pyfra.remote.Remote] = lambda x: x.hash
 
 
 def set_kvstore(provider):
@@ -65,6 +71,10 @@ def set_kvstore(provider):
 
 
 def _prepare_for_hash(x):
+    for type, fn in special_hashing.items():
+        if isinstance(x, type):
+            return fn(x)
+
     return x
 
 
@@ -86,7 +96,7 @@ def update_source_cache(fname, lineno, new_name):
 def cache(name=None):
     def wrapper(fn, name):
         if name is None:
-            name = pyfra.remote._hash_obs(fn.__module__, fn.__name__)[:16] + "-v0"
+            name = pyfra.remote._hash_obs(fn.__module__, fn.__name__, inspect.getsource(fn))[:16] + "_v0"
             # the decorator part of the stack is always the same size because we only get here if name is None
             stack_original_function = inspect.stack()[2]
             update_source_cache(stack_original_function.filename, stack_original_function.lineno - 1, name)
@@ -100,15 +110,41 @@ def cache(name=None):
             )
 
             try:
-                r = kvstore.get(overall_input_hash)
-                return r
+                ret, awaitable = kvstore.get(overall_input_hash)
+                ## ASYNC HANDLING, resume from file
+                if awaitable:
+                    async def _wrapper(ret):
+                        # wrap ret in a dummy async function
+                        return ret
+                    
+                    return _wrapper(ret)
+                else:
+                    return ret
             except KeyError:
-                r = fn(*args, **kwargs)
-                kvstore.set(overall_input_hash, r)
-                return r
+                ret = fn(*args, **kwargs)
+
+                ## ASYNC HANDLING, first run
+                if inspect.isawaitable(ret):
+                    # WARNING: using the same env across multiple async stages is not supported, and not possible to support!
+                    # TODO: detect if two async stages are using the same env and throw an error if so
+
+                    async def _wrapper(ret):
+                        # turn the original async function into a synchronous one and return a new async function
+                        ret = await ret
+                        kvstore.set(overall_input_hash, (ret, True))
+                        return ret
+                    
+                    return _wrapper(ret)
+                else:
+                    kvstore.set(overall_input_hash, (ret, False))
+                    return ret
         return _fn
 
     if callable(name):
         return wrapper(name, None)
 
     return partial(wrapper, name=name)
+
+
+# TODO: make it so Envs and cached Remotes cannot be used in both global and cached fn
+# TODO: add registry system for special object hashing
