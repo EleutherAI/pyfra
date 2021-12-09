@@ -2,7 +2,7 @@
 
 *The Python Framework for Research Applications.*
 
-[![Documentation Status](https://readthedocs.org/projects/pyfra/badge/?version=latest)](https://pyfra.readthedocs.io/en/latest/?badge=latest)
+[![Documentation Status](https://readthedocs.org/projects/pyfra/badge/?version=latest)](https://pyfra.readthedocs.io/en/latest/?badge=latest) [![PyPI version](https://badge.fury.io/py/pyfra.svg)](https://badge.fury.io/py/pyfra)
       
 
 ## Design Philosophy
