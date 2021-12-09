@@ -110,9 +110,32 @@ def cache(name=None):
             )
 
             try:
-                ret, awaitable = kvstore.get(overall_input_hash)
+                ob = kvstore.get(overall_input_hash)
+                ret = ob['ret']
+                original_awaitable = ob['awaitable']
+                original_was_coroutine = ob['iscoroutine']
+                current_is_coroutine = inspect.iscoroutinefunction(fn)
+
                 ## ASYNC HANDLING, resume from file
-                if awaitable:
+
+                if original_was_coroutine and current_is_coroutine:
+                    return_awaitable = True # coroutine -> coroutine
+                elif original_was_coroutine and not current_is_coroutine:
+                    return_awaitable = False # coroutine -> normal
+                elif not original_was_coroutine and not original_awaitable and current_is_coroutine:
+                    return_awaitable = True # normal -> coroutine
+                elif not original_was_coroutine and not original_awaitable and not current_is_coroutine:
+                    return_awaitable = False # normal -> normal
+                elif not original_was_coroutine and original_awaitable and current_is_coroutine:
+                    return_awaitable = True # normal_returning_awaitable -> coroutine
+                elif not original_was_coroutine and original_awaitable and not current_is_coroutine:
+                    # this case is ambiguous! we can't know if the modifier function returns an awaitable or not
+                    # without actually running the function, so we just assume it's an awaitable,
+                    # since probably nothing changed.
+                    return_awaitable = True # normal_returning_awaitable -> normal/normal_returning_awaitable
+
+
+                if return_awaitable:
                     async def _wrapper(ret):
                         # wrap ret in a dummy async function
                         return ret
@@ -131,12 +154,20 @@ def cache(name=None):
                     async def _wrapper(ret):
                         # turn the original async function into a synchronous one and return a new async function
                         ret = await ret
-                        kvstore.set(overall_input_hash, (ret, True))
+                        kvstore.set(overall_input_hash, {
+                            "ret": ret,
+                            "awaitable": True,
+                            "iscoroutine": inspect.iscoroutinefunction(fn),
+                        })
                         return ret
                     
                     return _wrapper(ret)
                 else:
-                    kvstore.set(overall_input_hash, (ret, False))
+                    kvstore.set(overall_input_hash, {
+                        "ret": ret,
+                        "awaitable": False,
+                        "iscoroutine": inspect.iscoroutinefunction(fn),
+                    })
                     return ret
         return _fn
 
