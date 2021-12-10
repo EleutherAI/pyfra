@@ -3,6 +3,7 @@ from typing import Any, Callable, Dict, Type
 import pyfra.remote
 import abc
 import os
+import re
 
 try:
     import blobfile as bf
@@ -85,9 +86,10 @@ def update_source_cache(fname, lineno, new_key):
     # line numbering is 1-indexed
     lineno -= 1
 
-    assert file_lines[lineno] in ["@cache", "@cache()"], "@cache can only be used as a decorator!"
+    assert file_lines[lineno].lstrip() in ["@cache", "@cache()"], "@cache can only be used as a decorator!"
+    leading_whitespace = re.match(r"^\s*", file_lines[lineno]).group(0)
 
-    file_lines[lineno] = f"@cache('{new_key}')"
+    file_lines[lineno] = f"{leading_whitespace}@cache('{new_key}')"
 
     with open(fname, "w") as f:
         f.write("\n".join(file_lines))
