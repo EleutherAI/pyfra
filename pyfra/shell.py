@@ -12,6 +12,7 @@ import urllib
 from best_download import download_file
 from colorama import Fore, Style
 from natsort import natsorted
+from deprecation import deprecated
 
 import imohash
 import pyfra.remote
@@ -319,6 +320,7 @@ def curl(url, max_tries=10, timeout=30): # TODO: add checksum option
             return None
         return data
 
+@deprecated(details="Use best_download directly, or wait for improved file-downloading support in pyfra")
 def wget(url, to=None, checksum=None):
     # DEPRECATED
     # thin wrapper for best_download

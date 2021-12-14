@@ -24,6 +24,8 @@ from yaspin import yaspin
 import pyfra.shell
 from pyfra.setup import install_pyenv
 
+from deprecation import deprecated
+
 sentinel = object()
 
 __all__ = [
@@ -797,6 +799,7 @@ class Env(Remote):
         }
 
 
+@deprecated(details="Will be replaced by pyfra.idempotent eventually")
 def stage(fn):
     """
     This decorator is used to mark a function as a "stage".
