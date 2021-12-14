@@ -22,6 +22,16 @@ setuptools.setup(
     python_requires='>=3.6',
     install_requires=[
         'best_download',
+        'sqlitedict',
+        'colorama',
+        'parse',
+        'natsort',
+        'yaspin',
+        'imohash',
+        'deprecation'
+    ],
+    extras_require={
+        'contrib': [
         'flask',
         'flask-login',
         'flask-wtf',
@@ -33,11 +43,6 @@ setuptools.setup(
         'sqlalchemy',
         'wtforms[email]',
         'ansi2html',
-        'sqlitedict',
-        'colorama',
-        'parse',
-        'natsort',
-        'yaspin',
-        'imohash',
-    ]
+        ]
+    }
 )

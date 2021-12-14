@@ -4,8 +4,12 @@ init()
 from .remote import *
 from .shell import *
 from .delegation import *
+from .idempotent import set_kvstore, cache
 
-import pyfra.contrib as contrib
+try:
+    import pyfra.contrib as contrib
+except ImportError:
+    pass
 
 
 # fallback snippet from https://github.com/gruns/icecream

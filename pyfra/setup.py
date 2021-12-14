@@ -2,6 +2,8 @@
 import pyfra.remote
 import pyfra.shell
 
+from deprecation import deprecated
+
 __all__ = [
     'apt',
     'install_pyenv',
@@ -12,6 +14,7 @@ def apt(r, packages):
     r.sh(f"sudo apt-get update; sudo apt-get install -y {' '.join(packages)}", pyenv_version=None)
 
 
+@deprecated()
 def ensure_supported(r):
     # todo: wire this up to something
     

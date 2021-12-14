@@ -24,6 +24,8 @@ from yaspin import yaspin
 import pyfra.shell
 from pyfra.setup import install_pyenv
 
+from deprecation import deprecated
+
 sentinel = object()
 
 __all__ = [
@@ -434,7 +436,7 @@ print(pyfra.shell.quick_hash(pathlib.Path(os.path.expanduser({repr(self.fname)})
             
 
 class Remote:
-    def __init__(self, ip=None, wd=None, experiment=None, resumable=False):
+    def __init__(self, ip=None, wd=None, experiment=None, resumable=False, additional_ssh_config=""):
         """
         Args:
             ip (str): The host to ssh to. This looks something like :code:`12.34.56.78` or :code:`goose.com` or :code:`someuser@12.34.56.78` or :code:`someuser@goose.com`. You must enable passwordless ssh and have your ssh key added to the server first. If None, the Remote represents localhost.
@@ -457,6 +459,8 @@ class Remote:
 
         self.hash = self._hash(None)
         self.envname = ""
+
+        self.additional_ssh_config = additional_ssh_config
         
         if resumable:
             global_env_registry.register(self)
@@ -466,7 +470,7 @@ class Remote:
         Arguments are the same as the :class:`pyfra.experiment.Experiment` constructor.
         """
 
-        return Env(ip=self.ip, envname=envname, git=git, branch=branch, force_rerun=force_rerun, python_version=python_version)
+        return Env(ip=self.ip, envname=envname, git=git, branch=branch, force_rerun=force_rerun, python_version=python_version, additional_ssh_config=self.additional_ssh_config)
 
     @_mutates_state()
     def sh(self, x, quiet=False, wrap=True, maxbuflen=1000000000, ignore_errors=False, no_venv=False, pyenv_version=None, forward_keys=False):
@@ -477,7 +481,7 @@ class Remote:
             if self.ip is None:
                 return pyfra.shell.sh(x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=pyenv_version)
             else:
-                return pyfra.shell._rsh(self.ip, x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=pyenv_version, forward_keys=forward_keys)
+                return pyfra.shell._rsh(self.ip, x, quiet=quiet, wd=self.wd, wrap=wrap, maxbuflen=maxbuflen, ignore_errors=ignore_errors, no_venv=no_venv, pyenv_version=pyenv_version, forward_keys=forward_keys, additional_ssh_config=self.additional_ssh_config)
         except pyfra.shell.ShellException as e:  # this makes the stacktrace easier to read
             raise pyfra.shell.ShellException(e.returncode, rem=not self.is_local()) from e.__cause__
     
@@ -715,9 +719,9 @@ class Env(Remote):
         force_rerun (bool): If True, all hashing will be disabled and everything will be run every time. Deprecated in favor of `with pyfra.always_rerun()`
         python_version (str): The python version to use.
     """
-    def __init__(self, ip=None, envname=None, git=None, branch=None, force_rerun=False, python_version="3.9.4"):
+    def __init__(self, ip=None, envname=None, git=None, branch=None, force_rerun=False, python_version="3.9.4", additional_ssh_config=""):
         self.wd = f"~/pyfra_envs/{envname}"
-        super().__init__(ip, self.wd, resumable=True)
+        super().__init__(ip, self.wd, resumable=True, additional_ssh_config=additional_ssh_config)
         self.pyenv_version = python_version
 
         self.envname = envname
@@ -795,6 +799,7 @@ class Env(Remote):
         }
 
 
+@deprecated(details="Will be replaced by pyfra.idempotent eventually")
 def stage(fn):
     """
     This decorator is used to mark a function as a "stage".
