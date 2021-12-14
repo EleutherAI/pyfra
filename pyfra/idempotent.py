@@ -89,7 +89,7 @@ def update_source_cache(fname, lineno, new_key):
     assert file_lines[lineno].lstrip() in ["@cache", "@cache()"], "@cache can only be used as a decorator!"
     leading_whitespace = re.match(r"^\s*", file_lines[lineno]).group(0)
 
-    file_lines[lineno] = f"{leading_whitespace}@cache('{new_key}')"
+    file_lines[lineno] = f"{leading_whitespace}@cache(\"{new_key}\")"
 
     with open(fname, "w") as f:
         f.write("\n".join(file_lines))
@@ -97,18 +97,24 @@ def update_source_cache(fname, lineno, new_key):
 
 def cache(key=None):
     def wrapper(fn, key):
+        # execution always gets here, before the function is called
+
         if key is None:
-            key = pyfra.remote._hash_obs(fn.__module__, fn.__name__, inspect.getsource(fn))[:16] + "_v0"
+            key = pyfra.remote._hash_obs(fn.__module__, fn.__name__, inspect.getsource(fn))[:8] + "_v0"
             # the decorator part of the stack is always the same size because we only get here if key is None
             stack_original_function = inspect.stack()[2]
             update_source_cache(stack_original_function.filename, stack_original_function.lineno - 1, key)
 
         @wraps(fn)
         def _fn(*args, **kwargs):
-            overall_input_hash = key + "_" + pyfra.remote._hash_obs(
-                [_prepare_for_hash(i) for i in range(len(args))],
-                [_prepare_for_hash(k) for k in sorted(kwargs.keys())],
+            # execution gets here only after the function is called
+
+            arg_hash = pyfra.remote._hash_obs(
+                [_prepare_for_hash(i) for i in args],
+                [(k, _prepare_for_hash(v)) for k, v in list(sorted(kwargs.items()))],
             )
+
+            overall_input_hash = key + "_" + arg_hash
 
             try:
                 ob = kvstore.get(overall_input_hash)
@@ -147,7 +153,9 @@ def cache(key=None):
                 else:
                     return ret
             except KeyError:
+                start_time = time.time()
                 ret = fn(*args, **kwargs)
+                end_time = time.time()
 
                 ## ASYNC HANDLING, first run
                 if inspect.isawaitable(ret):
@@ -161,6 +169,8 @@ def cache(key=None):
                             "ret": ret,
                             "awaitable": True,
                             "iscoroutine": inspect.iscoroutinefunction(fn),
+                            "start_time": start_time,
+                            "end_time": end_time,
                         })
                         return ret
                     
@@ -170,6 +180,8 @@ def cache(key=None):
                         "ret": ret,
                         "awaitable": False,
                         "iscoroutine": inspect.iscoroutinefunction(fn),
+                        "start_time": start_time,
+                        "end_time": end_time,
                     })
                     return ret
         return _fn
