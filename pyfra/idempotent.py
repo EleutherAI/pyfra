@@ -68,6 +68,8 @@ special_hashing: Dict[Type, Callable[[Any], str]] = {}
 # some pyfra special hashing stuff
 special_hashing[pyfra.remote.RemotePath] = lambda x: x.quick_hash()
 special_hashing[pyfra.remote.Remote] = lambda x: x.hash
+special_hashing[list] = lambda x: list(map(_prepare_for_hash, x))
+special_hashing[dict] = lambda x: {_prepare_for_hash(k): _prepare_for_hash(v) for k, v in x.items()}
 
 
 def set_kvstore(provider):
@@ -115,7 +117,7 @@ def cache(key=None):
 
             arg_hash = pyfra.remote._hash_obs(
                 [_prepare_for_hash(i) for i in args],
-                [(k, _prepare_for_hash(v)) for k, v in list(sorted(kwargs.items()))],
+                [(_prepare_for_hash(k), _prepare_for_hash(v)) for k, v in list(sorted(kwargs.items()))],
             )
 
             overall_input_hash = key + "_" + arg_hash
