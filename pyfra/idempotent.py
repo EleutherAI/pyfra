@@ -120,6 +120,8 @@ def cache(key=None):
                 [(_prepare_for_hash(k), _prepare_for_hash(v)) for k, v in list(sorted(kwargs.items()))],
             )
 
+            kwargs.pop(kwargs.pop("_pyfra_nonce_kwarg", "v"), None)
+
             overall_input_hash = key + "_" + arg_hash
 
             try:
