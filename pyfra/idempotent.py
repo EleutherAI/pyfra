@@ -33,6 +33,9 @@ class KVStoreProvider(abc.ABC):
         """
         pass
 
+    def cache(self, key=None):
+        return cache(key, kvstore=self, _callstackoffset=3)
+
 
 class LocalKVStore(KVStoreProvider):
     def __init__(self):
@@ -62,7 +65,7 @@ class BlobfileKVStore(KVStoreProvider):
             pickle.dump(value, f)
 
 
-kvstore = LocalKVStore()
+default_kvstore = LocalKVStore()
 special_hashing: Dict[Type, Callable[[Any], str]] = {}
 
 # some pyfra special hashing stuff
@@ -73,8 +76,8 @@ special_hashing[dict] = lambda x: {_prepare_for_hash(k): _prepare_for_hash(v) fo
 
 
 def set_kvstore(provider):
-    global kvstore
-    kvstore = provider
+    global default_kvstore
+    default_kvstore = provider
 
 
 def _prepare_for_hash(x):
@@ -92,24 +95,29 @@ def update_source_cache(fname, lineno, new_key):
     # line numbering is 1-indexed
     lineno -= 1
 
-    assert file_lines[lineno].lstrip() in ["@cache", "@cache()"], "@cache can only be used as a decorator!"
+    s = re.match(r"@((?:[^\W0-9]\w*\.)?)cache(\(\))?", file_lines[lineno].lstrip())
+    assert s, "@cache can only be used as a decorator!"
     leading_whitespace = re.match(r"^\s*", file_lines[lineno]).group(0)
 
-    file_lines[lineno] = f"{leading_whitespace}@cache(\"{new_key}\")"
+    file_lines[lineno] = f"{leading_whitespace}@{s.group(1)}cache(\"{new_key}\")"
 
     with open(fname, "w") as f:
         f.write("\n".join(file_lines))
 
 
-def cache(key=None):
-    def wrapper(fn, key):
+def cache(key=None, kvstore=None, *, _callstackoffset=2):
+    def wrapper(fn, key, kvstore, _callstackoffset):
         # execution always gets here, before the function is called
 
         if key is None:
             key = pyfra.remote._hash_obs(fn.__module__, fn.__name__, inspect.getsource(fn))[:8] + "_v0"
             # the decorator part of the stack is always the same size because we only get here if key is None
-            stack_original_function = inspect.stack()[2]
+            stack_original_function = inspect.stack()[_callstackoffset]
             update_source_cache(stack_original_function.filename, stack_original_function.lineno - 1, key)
+    
+        if kvstore is None:
+            global default_kvstore
+            kvstore = default_kvstore
 
         @wraps(fn)
         def _fn(*args, **kwargs):
@@ -195,9 +203,9 @@ def cache(key=None):
         return _fn
 
     if callable(key):
-        return wrapper(key, None)
+        return wrapper(key, None, kvstore=kvstore, _callstackoffset=_callstackoffset)
 
-    return partial(wrapper, key=key)
+    return partial(wrapper, key=key, kvstore=kvstore, _callstackoffset=_callstackoffset)
 
 
 # TODO: make it so Envs and cached Remotes cannot be used in both global and cached fn
