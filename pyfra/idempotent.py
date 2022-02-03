@@ -2,6 +2,7 @@
 # EXPERIMENTAL
 
 from functools import partial, wraps
+import types
 from typing import Any, Callable, Dict, Type
 import pyfra.remote
 import abc
@@ -73,6 +74,8 @@ special_hashing[pyfra.remote.RemotePath] = lambda x: x.quick_hash()
 special_hashing[pyfra.remote.Remote] = lambda x: x.hash
 special_hashing[list] = lambda x: list(map(_prepare_for_hash, x))
 special_hashing[dict] = lambda x: {_prepare_for_hash(k): _prepare_for_hash(v) for k, v in x.items()}
+special_hashing[tuple] = lambda x: tuple(map(_prepare_for_hash, x))
+special_hashing[types.FunctionType] = lambda x: x.__name__
 
 
 def set_kvstore(provider):
@@ -81,8 +84,8 @@ def set_kvstore(provider):
 
 
 def _prepare_for_hash(x):
-    for type, fn in special_hashing.items():
-        if isinstance(x, type):
+    for type_, fn in special_hashing.items():
+        if isinstance(x, type_):
             return fn(x)
 
     return x
