@@ -1,21 +1,4 @@
-best_download
-ansi2html
-sqlitedict
-colorama
-parse
-natsort
-
-# web
-flask
-flask-login
-flask-wtf
-flask-sqlalchemy
-flask-migrate
-flask-admin
-flask-bootstrap
-pyjwt
-sqlalchemy
-wtforms[email]
+-e .
 
 
 sphinx==4.0.2

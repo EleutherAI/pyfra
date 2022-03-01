@@ -4,6 +4,7 @@ sqlitedict
 colorama
 parse
 natsort
+deprecation
 
 # web
 flask
