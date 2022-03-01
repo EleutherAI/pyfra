@@ -9,6 +9,7 @@ import abc
 import os
 import re
 import time
+import dataclasses
 
 try:
     import blobfile as bf
@@ -84,6 +85,9 @@ def set_kvstore(provider):
 
 
 def _prepare_for_hash(x):
+    if dataclasses.is_dataclass(x):
+        return dataclasses.asdict(x)
+
     for type_, fn in special_hashing.items():
         if isinstance(x, type_):
             return fn(x)
