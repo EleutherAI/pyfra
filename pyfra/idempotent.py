@@ -77,6 +77,7 @@ special_hashing[list] = lambda x: list(map(_prepare_for_hash, x))
 special_hashing[dict] = lambda x: {_prepare_for_hash(k): _prepare_for_hash(v) for k, v in x.items()}
 special_hashing[tuple] = lambda x: tuple(map(_prepare_for_hash, x))
 special_hashing[types.FunctionType] = lambda x: x.__name__
+special_hashing[type] = lambda x: x.__name__
 
 
 def set_kvstore(provider):
