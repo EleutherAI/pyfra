@@ -79,6 +79,11 @@ special_hashing[tuple] = lambda x: tuple(map(_prepare_for_hash, x))
 special_hashing[types.FunctionType] = lambda x: x.__name__
 special_hashing[type] = lambda x: x.__name__
 
+try:
+    from pandas import DataFrame
+    special_hashing[DataFrame] = lambda x: x.to_json()
+except ImportError:
+    pass
 
 def set_kvstore(provider):
     global default_kvstore
